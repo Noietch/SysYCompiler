@@ -1,0 +1,11 @@
+const int const1 = 1, const2 = -100
+
+void func(int a[][){
+    return
+}
+
+int main(){
+change1 = 10;
+printf("Hello World %d",1;
+return 0;
+}
