@@ -543,9 +543,8 @@ public class TokenHandler {
                 while (SymTypeIs("LBRACK")) {
                     nextSym();
                     exps.add(exp());
-                    if (SymTypeIs("RBRACK")) {
-                        nextSym();
-                    } else throw new ParseError("lVal error");
+                    if (SymTypeIs("RBRACK")) nextSym();
+                    else this.syntaxError.addError(ErrorType.NoRightMiddle,getSymLine(-1));
                 }
             } else nextSym();
             return new LVal(ident, type, exps);
@@ -559,8 +558,13 @@ public class TokenHandler {
             Exp tempExp = exp();
             if (SymTypeIs("RPARENT")) {
                 nextSym();
-                return new PrimaryExp(tempExp);
-            } else throw new ParseError("error !!");
+
+            } else {
+
+            }
+
+            return new PrimaryExp(tempExp);
+
         } else return new PrimaryExp(lVal());
     }
 
