@@ -1,7 +1,7 @@
 package SyntaxAnalyzer.element;
 
 public class FuncType extends SyntaxNode{
-    private final String type;
+    public final String type;
 
     public FuncType(String type) {
         this.type = type;

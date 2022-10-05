@@ -33,4 +33,8 @@ public class LVal extends SyntaxNode{
         res.append("<LVal>\n");
         return res.toString();
     }
+
+    public String getName(){
+        return ident.getValue();
+    }
 }

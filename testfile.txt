@@ -1,11 +1,15 @@
-const int const1 = 1, const2 = -100
+const int cons2t1 = 1, const2 = -100;
 
-void func(int a[][){
-    return
-}
+int func1(int a[]){
+ int const1 = 1, const1 = -100;
+ if(const1 < 1){
+    break;
+ }
+ }
 
 int main(){
-change1 = 10;
-printf("Hello World %d",1;
+ int const1 = 1, const2 = -100;
+ cons2t1 = func1(1,2);
+
 return 0;
 }

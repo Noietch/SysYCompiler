@@ -20,4 +20,8 @@ public class FuncFParams extends SyntaxNode {
         res.append("<FuncFParams>\n");
         return res.toString();
     }
+
+    public int getNumOfParams(){
+        return funcFParams.size();
+    }
 }

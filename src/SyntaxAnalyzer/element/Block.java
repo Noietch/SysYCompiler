@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 public class Block extends SyntaxNode{
 
-    private ArrayList<BlockItem> blockItems;
+    private final ArrayList<BlockItem> blockItems;
 
     public Block(ArrayList<BlockItem> blockItems) {
         this.blockItems = blockItems;
@@ -21,5 +21,14 @@ public class Block extends SyntaxNode{
         res.append("RBRACE }\n");
         res.append("<Block>\n");
         return res.toString();
+    }
+
+    public boolean isLastReturn(){
+        int sizeOfItems = blockItems.size() - 1;
+        BlockItem blockItem = blockItems.get(sizeOfItems);
+        if(blockItem.getStmt()!=null){
+            return blockItem.getStmt().getType() == Stmt.Type.Return;
+        }
+        return false;
     }
 }

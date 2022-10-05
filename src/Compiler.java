@@ -10,8 +10,10 @@ public class Compiler {
             Parser p = new Parser(src);
             p.getSymbol();
             TokenHandler th = new TokenHandler(p.getTokenArrayList());
-            th.getSymList();
-            String dist = th.getErrorList();
+            String dist = th.getSymList();
+//            String dist = th.getErrorList();
+//            th.getSymbolTable();
+//            System.out.println(symbolTable);
             System.out.println(dist);
 //            FileUtils.toFile(dist,"error.txt");
         } catch (IOException e) {

@@ -8,7 +8,7 @@ enum ErrorType {
     Undefined,
     ParamNumber,
     ParamClass,
-    ExtraReturn,
+    WrongReturn,
     NoReturn,
     AssignConst,
     NoSemi,
@@ -23,7 +23,7 @@ enum ErrorType {
         if (type == Undefined) return "c";
         if (type == ParamNumber) return "d";
         if (type == ParamClass) return "e";
-        if (type == ExtraReturn) return "f";
+        if (type == WrongReturn) return "f";
         if (type == NoReturn) return "g";
         if (type == AssignConst) return "h";
         if (type == NoSemi) return "i";

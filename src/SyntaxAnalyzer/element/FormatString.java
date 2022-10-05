@@ -28,6 +28,16 @@ public class FormatString extends SyntaxNode {
         return true;
     }
 
+    public int paramNum(){
+        int res = 0;
+        for (int i = 1; i < token.value.length() - 1; i++) {
+            if(token.value.charAt(i) == '%' && token.value.charAt(i+1) == 'd'){
+                res ++;
+            }
+        }
+        return res;
+    }
+
     @Override
     public String toString() {
         StringBuilder res = new StringBuilder();

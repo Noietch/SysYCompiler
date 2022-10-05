@@ -21,7 +21,7 @@ public class Stmt extends SyntaxNode{
     private Cond cond;
     private ArrayList<Stmt> stmts;
     private FormatString formatString;
-    private Type type;
+    private final Type type;
     private Block block;
 
     public Stmt(Type type, Block block) {
@@ -141,5 +141,9 @@ public class Stmt extends SyntaxNode{
         }
         res.append("<Stmt>\n");
         return res.toString();
+    }
+
+    public Type getType() {
+        return type;
     }
 }

@@ -1,5 +1,7 @@
 package SyntaxAnalyzer.element;
 
+import SyntaxAnalyzer.SymbolTable.Symbol;
+
 import java.util.ArrayList;
 
 public class ConstDef extends SyntaxNode{
