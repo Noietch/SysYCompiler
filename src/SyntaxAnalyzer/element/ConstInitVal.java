@@ -3,8 +3,8 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class ConstInitVal extends SyntaxNode {
-    private final ArrayList<SyntaxNode> syntaxNodes;
-    private final VarType initType;
+    public final ArrayList<SyntaxNode> syntaxNodes;
+    public final VarType initType;
 
     public ConstInitVal(ArrayList<SyntaxNode> syntaxNodes, VarType initType) {
         this.syntaxNodes = syntaxNodes;

@@ -3,7 +3,7 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class FuncFParams extends SyntaxNode {
-    private ArrayList<FuncFParam> funcFParams;
+    public ArrayList<FuncFParam> funcFParams;
 
     public FuncFParams(ArrayList<FuncFParam> funcFParams) {
         this.funcFParams = funcFParams;
@@ -19,9 +19,5 @@ public class FuncFParams extends SyntaxNode {
         }
         res.append("<FuncFParams>\n");
         return res.toString();
-    }
-
-    public int getNumOfParams(){
-        return funcFParams.size();
     }
 }

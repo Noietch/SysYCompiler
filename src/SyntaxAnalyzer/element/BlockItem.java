@@ -1,9 +1,9 @@
 package SyntaxAnalyzer.element;
 
 public class BlockItem extends SyntaxNode{
-    private Decl decl;
+    public Decl decl;
 
-    private Stmt stmt;
+    public Stmt stmt;
     public BlockItem(Decl decl) {
         this.decl = decl;
         childrenNode.add(decl);
@@ -26,7 +26,6 @@ public class BlockItem extends SyntaxNode{
             res.append(stmt.toString());
         }
         else res.append(decl);
-//        res.append("<BlockItem>\n");
         return res.toString();
     }
 }

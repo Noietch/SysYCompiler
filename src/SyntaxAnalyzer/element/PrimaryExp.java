@@ -1,11 +1,11 @@
 package SyntaxAnalyzer.element;
 
 public class PrimaryExp extends SyntaxNode{
-    private Exp exp;
-    private LVal lVal;
-    private Number number;
+    public Exp exp;
+    public LVal lVal;
+    public Number number;
 
-    private boolean isExp;
+    public boolean isExp;
     public PrimaryExp(Exp exp) {
         this.exp = exp;
         this.isExp = true;

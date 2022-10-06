@@ -3,7 +3,7 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class FuncRParams extends SyntaxNode{
-    private final ArrayList<Exp> exps;
+    public final ArrayList<Exp> exps;
 
     public FuncRParams(ArrayList<Exp> exps) {
         this.exps = exps;

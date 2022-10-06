@@ -3,8 +3,8 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class EqExp extends SyntaxNode{
-    private final ArrayList<RelExp> relExps;
-    private final ArrayList<Ident> unaryOps;
+    public final ArrayList<RelExp> relExps;
+    public final ArrayList<Ident> unaryOps;
 
     public EqExp(ArrayList<RelExp> relExps, ArrayList<Ident> unaryOps) {
         this.relExps = relExps;

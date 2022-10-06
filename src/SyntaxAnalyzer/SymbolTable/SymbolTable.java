@@ -59,9 +59,9 @@ public class SymbolTable {
         return this.father;
     }
 
-    public boolean isDuplicateCurField(String name) {
+    public boolean isDuplicateCurField(Ident ident) {
         for (Symbol symbol : symbolList) {
-            if (symbol.name.equals(name)) {
+            if (symbol.name.equals(ident.token.value)) {
                 return true;
             }
         }

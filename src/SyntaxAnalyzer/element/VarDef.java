@@ -3,9 +3,9 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class VarDef extends SyntaxNode{
-    private final Ident ident;
-    private final ArrayList<ConstExp> constExps;
-    private InitVal initVal;
+    public final Ident ident;
+    public final ArrayList<ConstExp> constExps;
+    public InitVal initVal;
 
     public VarDef(Ident ident, ArrayList<ConstExp> constExps, InitVal initVal) {
         this.ident = ident;

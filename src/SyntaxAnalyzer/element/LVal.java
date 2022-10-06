@@ -3,9 +3,9 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class LVal extends SyntaxNode{
-    private Ident ident;
-    private VarType type;
-    private ArrayList<Exp> exps;
+    public Ident ident;
+    public VarType type;
+    public ArrayList<Exp> exps;
 
     public LVal(Ident ident, VarType type) {
         this.ident = ident;

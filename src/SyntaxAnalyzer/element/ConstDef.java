@@ -5,9 +5,9 @@ import SyntaxAnalyzer.SymbolTable.Symbol;
 import java.util.ArrayList;
 
 public class ConstDef extends SyntaxNode{
-    private Ident ident;
-    private ArrayList<ConstExp> constExps;
-    private ConstInitVal constInitVal;
+    public Ident ident;
+    public ArrayList<ConstExp> constExps;
+    public ConstInitVal constInitVal;
 
     public ConstDef(Ident ident, ArrayList<ConstExp> constExps, ConstInitVal constInitVal) {
         this.ident = ident;

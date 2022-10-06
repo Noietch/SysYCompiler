@@ -3,8 +3,8 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class LAndExp extends SyntaxNode{
-    private final ArrayList<EqExp> eqExps;
-    private final ArrayList<Ident> unaryOps;
+    public final ArrayList<EqExp> eqExps;
+    public final ArrayList<Ident> unaryOps;
 
     public LAndExp(ArrayList<EqExp> eqExps, ArrayList<Ident> unaryOps) {
         this.eqExps = eqExps;

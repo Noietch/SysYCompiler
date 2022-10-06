@@ -16,17 +16,18 @@ public class Stmt extends SyntaxNode{
         Return,
         Print
     }
-    private LVal lVal;
-    private ArrayList<Exp> exps;
-    private Cond cond;
-    private ArrayList<Stmt> stmts;
-    private FormatString formatString;
-    private final Type type;
-    private Block block;
+    public LVal lVal;
+    public ArrayList<Exp> exps;
+    public Cond cond;
+    public ArrayList<Stmt> stmts;
+    public FormatString formatString;
+    public final Type type;
+    public Block block;
 
     public Stmt(Type type, Block block) {
         this.type = type;
         this.block = block;
+        childrenNode.add(block);
     }
 
     public Stmt(Type type) {

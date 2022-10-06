@@ -1,4 +1,5 @@
 import LexicalAnalyzer.Parser;
+import SyntaxAnalyzer.ErrorHandler;
 import SyntaxAnalyzer.TokenHandler;
 import Utils.FileUtils;
 import java.io.IOException;
@@ -9,13 +10,16 @@ public class Compiler {
             String src = FileUtils.readFile("testfile.txt");
             Parser p = new Parser(src);
             p.getSymbol();
-            TokenHandler th = new TokenHandler(p.getTokenArrayList());
-            String dist = th.getSymList();
-//            String dist = th.getErrorList();
+            TokenHandler tokenHandler = new TokenHandler(p.getTokenArrayList());
+            ErrorHandler errorHandler = new ErrorHandler(tokenHandler.getSyntaxTreeRoot(),tokenHandler.getErrorList());
+            errorHandler.travelSyntaxTree(errorHandler.syntaxTreeRoot);
+//            errorHandler.getSymbolTable();
+            System.out.println(errorHandler.getErrorList());
+//            String error = th.getErrorList();
 //            th.getSymbolTable();
 //            System.out.println(symbolTable);
-            System.out.println(dist);
-//            FileUtils.toFile(dist,"error.txt");
+//            System.out.println(error);
+//            FileUtils.toFile(symbol,"output.txt");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

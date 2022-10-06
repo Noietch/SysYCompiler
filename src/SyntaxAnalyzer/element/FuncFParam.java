@@ -3,10 +3,10 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class FuncFParam extends SyntaxNode{
-    private BType bType;
-    private Ident ident;
-    private VarType varType;
-    private ArrayList<ConstExp> constExps;
+    public BType bType;
+    public Ident ident;
+    public VarType varType;
+    public ArrayList<ConstExp> constExps;
 
     public FuncFParam(BType bType, Ident ident, VarType varType, ArrayList<ConstExp> constExps) {
         this.bType = bType;

@@ -3,8 +3,8 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class InitVal extends SyntaxNode{
-    private ArrayList<SyntaxNode> syntaxNodes;
-    private VarType initType;
+    public ArrayList<SyntaxNode> syntaxNodes;
+    public VarType initType;
 
     public InitVal(ArrayList<SyntaxNode> syntaxNodes, VarType initType) {
         this.syntaxNodes = syntaxNodes;

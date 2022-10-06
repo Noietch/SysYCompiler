@@ -1,7 +1,7 @@
 package SyntaxAnalyzer.element;
 
 public class Number extends SyntaxNode{
-    private IntConst intConst;
+    public IntConst intConst;
 
     public Number(IntConst intConst) {
         this.intConst = intConst;

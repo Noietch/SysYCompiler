@@ -1,6 +1,8 @@
 package SyntaxAnalyzer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 
 enum ErrorType {
     IllegalSymbol,
@@ -35,7 +37,7 @@ enum ErrorType {
     }
 }
 
-class Error {
+class Error implements Comparable<Error>{
     public ErrorType type;
     public Integer ErrorLine;
 
@@ -45,8 +47,13 @@ class Error {
     }
 
     @Override
+    public int compareTo(Error error) {
+        return this.ErrorLine - error.ErrorLine;
+    }
+
+    @Override
     public String toString() {
-        return ErrorType.toCode(this.type) + " " + this.ErrorLine + "\n";
+        return this.ErrorLine + " " + ErrorType.toCode(this.type) + "\n";
     }
 }
 
@@ -65,6 +72,7 @@ public class SyntaxError {
     @Override
     public String toString() {
         StringBuilder res = new StringBuilder();
+        Collections.sort(errors);
         for (Error error : errors) {
             res.append(error);
         }

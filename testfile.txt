@@ -1,15 +1,35 @@
-const int cons2t1 = 1, const2 = -100;
+int func(){
 
-int func1(int a[]){
- int const1 = 1, const1 = -100;
- if(const1 < 1){
-    break;
- }
- }
+
+    {
+    const int a_1 = 1;
+    const int a_1 = 1;
+    }
+
+
+    return 0;
+}
+
+int func1(int a,int a){
+
+
+    {
+    const int a_1 = 1;
+    const int a_1 = 1;
+    }
+
+
+    return 0;
+}
 
 int main(){
- int const1 = 1, const2 = -100;
- cons2t1 = func1(1,2);
 
-return 0;
+
+    {
+    const int a_1 = 1;
+    const int a_1 = 1;
+    }
+
+
+    return 0;
 }

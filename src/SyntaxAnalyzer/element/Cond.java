@@ -1,7 +1,7 @@
 package SyntaxAnalyzer.element;
 
 public class Cond extends SyntaxNode{
-    private final LOrExp lOrExp;
+    public final LOrExp lOrExp;
 
     public Cond(LOrExp lOrExp) {
         this.lOrExp = lOrExp;

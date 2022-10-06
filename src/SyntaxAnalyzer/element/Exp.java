@@ -1,7 +1,7 @@
 package SyntaxAnalyzer.element;
 
 public class Exp extends SyntaxNode{
-    private final AddExp addExp;
+    public final AddExp addExp;
 
     public Exp(AddExp addExp) {
         this.addExp = addExp;

@@ -3,8 +3,8 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class AddExp extends SyntaxNode{
-    private final ArrayList<MulExp> mulExps;
-    private final ArrayList<Ident> unaryOps;
+    public final ArrayList<MulExp> mulExps;
+    public final ArrayList<Ident> unaryOps;
     public AddExp(ArrayList<MulExp> mulExps, ArrayList<Ident> unaryOps) {
         this.mulExps = mulExps;
         this.unaryOps = unaryOps;

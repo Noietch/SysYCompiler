@@ -5,8 +5,6 @@ import SyntaxAnalyzer.element.FuncFParams;
 import SyntaxAnalyzer.element.FuncType;
 import SyntaxAnalyzer.element.InitVal;
 
-import java.util.ArrayList;
-
 public class Symbol {
     public enum Type {
         func,
@@ -24,7 +22,6 @@ public class Symbol {
 
     public Type type;
     public FuncType returnType;
-
     public FuncFParams funcFParams;
     @Override
     public String toString() {

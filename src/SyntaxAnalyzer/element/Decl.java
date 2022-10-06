@@ -1,8 +1,8 @@
 package SyntaxAnalyzer.element;
 
 public class Decl extends SyntaxNode{
-    private ConstDecl constDecl;
-    private VarDecl varDecl;
+    public ConstDecl constDecl;
+    public VarDecl varDecl;
 
     public Decl(ConstDecl constDecl) {
         this.constDecl = constDecl;
@@ -19,8 +19,7 @@ public class Decl extends SyntaxNode{
         StringBuilder res = new StringBuilder();
         if(constDecl == null)
             res.append(varDecl.toString());
-        else res.append(constDecl.toString());
-//        res.append("<Decl>\n");
+        else res.append(constDecl);
         return res.toString();
     }
 }

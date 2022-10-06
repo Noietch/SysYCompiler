@@ -3,8 +3,8 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class ConstDecl extends SyntaxNode {
-    private final BType bType;
-    private final ArrayList<ConstDef> constDefs;
+    public final BType bType;
+    public final ArrayList<ConstDef> constDefs;
 
     public ConstDecl(BType bType, ArrayList<ConstDef> constDefs) {
         this.bType = bType;

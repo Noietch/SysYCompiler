@@ -1,11 +1,11 @@
 package SyntaxAnalyzer.element;
 
 public class UnaryExp extends SyntaxNode{
-    private PrimaryExp primaryExp;
-    private Ident ident;
-    private FuncRParams funcRParams;
-    private UnaryOp unaryOp;
-    private UnaryExp unaryExp;
+    public PrimaryExp primaryExp;
+    public Ident ident;
+    public FuncRParams funcRParams;
+    public UnaryOp unaryOp;
+    public UnaryExp unaryExp;
 
     public UnaryExp(PrimaryExp primaryExp) {
         this.primaryExp = primaryExp;

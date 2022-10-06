@@ -1,7 +1,7 @@
 package SyntaxAnalyzer.element;
 
 public class BType extends SyntaxNode{
-    private String type;
+    public String type;
     public BType() {
         this.type = "int";
     }

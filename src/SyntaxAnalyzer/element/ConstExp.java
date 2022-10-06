@@ -1,7 +1,7 @@
 package SyntaxAnalyzer.element;
 
 public class ConstExp extends SyntaxNode{
-    private AddExp addExp;
+    public AddExp addExp;
 
     public ConstExp(AddExp addExp) {
         this.addExp = addExp;

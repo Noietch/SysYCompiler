@@ -3,8 +3,8 @@ package SyntaxAnalyzer.element;
 import java.util.ArrayList;
 
 public class VarDecl extends SyntaxNode {
-    private final BType bType;
-    private final ArrayList<VarDef> varDefs;
+    public final BType bType;
+    public final ArrayList<VarDef> varDefs;
 
     public VarDecl(BType bType, ArrayList<VarDef> varDefs) {
         this.bType = bType;

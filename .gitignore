@@ -1,5 +1,7 @@
 .idea/
 out/
+output/
+test/
 *.txt
 *.iml
 *.zip

@@ -3,7 +3,7 @@ package SyntaxAnalyzer.element;
 import LexicalAnalyzer.Token;
 
 public class IntConst {
-    private Token token;
+    public Token token;
     public IntConst(Token token) {
         this.token = token;
     }
