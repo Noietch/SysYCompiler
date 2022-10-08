@@ -13,13 +13,11 @@ public class Compiler {
             TokenHandler tokenHandler = new TokenHandler(p.getTokenArrayList());
             ErrorHandler errorHandler = new ErrorHandler(tokenHandler.getSyntaxTreeRoot(),tokenHandler.getErrorList());
             errorHandler.travelSyntaxTree(errorHandler.syntaxTreeRoot);
-//            errorHandler.getSymbolTable();
-            System.out.println(errorHandler.getErrorList());
-//            String error = th.getErrorList();
-//            th.getSymbolTable();
-//            System.out.println(symbolTable);
-//            System.out.println(error);
-//            FileUtils.toFile(symbol,"output.txt");
+            String symbols = errorHandler.syntaxTreeRoot.toString().trim();
+            String error = errorHandler.getErrorList().trim();
+            System.out.println(error);
+            FileUtils.toFile(error,"error.txt");
+            FileUtils.toFile(symbols,"output.txt");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

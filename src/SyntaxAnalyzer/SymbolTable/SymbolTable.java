@@ -39,7 +39,8 @@ public class SymbolTable {
     // 加入函数
     public void addSymbol(Ident ident, FuncType returnType, int paramsNum, FuncFParams funcFParams) {
         Symbol symbol = ident.toSymbol();
-        symbol.setType(Symbol.Type.func);
+        if(returnType.type.equals("int")) symbol.setType(Symbol.Type.int_func);
+        else symbol.setType(Symbol.Type.void_fuc);
         symbol.setReturnType(returnType);
         symbol.setParamsNum(paramsNum);
         symbol.setFuncFParams(funcFParams);
@@ -68,11 +69,11 @@ public class SymbolTable {
         return false;
     }
 
-    public Symbol isExistUpField(String name) {
+    public Symbol isExistUpField(Ident ident) {
         SymbolTable curTable = this;
         while (curTable != null) {
             for (Symbol symbol : curTable.symbolList) {
-                if (symbol.name.equals(name)) {
+                if (symbol.name.equals(ident.token.value)) {
                     return symbol;
                 }
             }
@@ -81,11 +82,11 @@ public class SymbolTable {
         return null;
     }
 
-    public boolean checkIsConst(String name) {
+    public boolean checkIsConst(Ident ident) {
         SymbolTable curTable = this;
         while (curTable != null) {
-            for (Symbol symbol : symbolList) {
-                if (symbol.name.equals(name)) {
+            for (Symbol symbol : curTable.symbolList) {
+                if (symbol.name.equals(ident.token.value)) {
                     return symbol.isConst;
                 }
             }
@@ -98,14 +99,30 @@ public class SymbolTable {
         SymbolTable curTable = this.father;
         while (curTable != null) {
             int listSize = curTable.symbolList.size() - 1;
-            Symbol lastItem = curTable.symbolList.get(listSize);
-            if (lastItem.type == Symbol.Type.func) {
-                return lastItem.returnType.type.equals("void") && size == 0;
+            if(listSize >= 0){
+                Symbol lastItem = curTable.symbolList.get(listSize);
+                if (lastItem.type == Symbol.Type.void_fuc) return size == 0;
+                else if(lastItem.type == Symbol.Type.int_func) return true;
+                else curTable = curTable.father;
             }
-            curTable = curTable.father;
+            else curTable = curTable.father;
         }
         System.out.println("checkFatherFuncType Error");
         return false;
+    }
+
+    public Symbol.Type getType(Ident ident){
+        SymbolTable curTable = this;
+        while (curTable != null) {
+            for (Symbol symbol : curTable.symbolList) {
+                if (symbol.name.equals(ident.token.value)) {
+                    return symbol.type;
+                }
+            }
+            curTable = curTable.father;
+        }
+        System.out.println("getType Not Found");
+        return Symbol.Type.var;
     }
 
     public void getAll(SymbolTable symbolTable) {

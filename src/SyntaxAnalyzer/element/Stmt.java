@@ -23,6 +23,8 @@ public class Stmt extends SyntaxNode{
     public FormatString formatString;
     public final Type type;
     public Block block;
+    public Ident ident;
+
 
     public Stmt(Type type, Block block) {
         this.type = type;
@@ -43,15 +45,17 @@ public class Stmt extends SyntaxNode{
         this.type = type;
         childrenNode.add(lVal);
     }
-    public Stmt(ArrayList<Exp> exps,Type type) {
+    public Stmt(ArrayList<Exp> exps,Type type,Ident ident) {
         this.exps = exps;
         this.type = type;
+        this.ident = ident;
         childrenNode.addAll(exps);
     }
-    public Stmt(ArrayList<Exp> exps, FormatString formatString,Type type) {
+    public Stmt(ArrayList<Exp> exps, FormatString formatString,Type type, Ident ident) {
         this.exps = exps;
         this.type = type;
         this.formatString = formatString;
+        this.ident = ident;
         childrenNode.addAll(exps);
         childrenNode.add(formatString);
     }

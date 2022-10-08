@@ -1,35 +1,52 @@
-int func(){
+const int const_num = 1;
+const int const_num = 1; // const重复定义
 
+int num = 2;
+int num = 2; // int 重复定义
 
-    {
-    const int a_1 = 1;
-    const int a_1 = 1;
-    }
-
-
+int func1(int x){
     return 0;
 }
 
-int func1(int a,int a){
+void func2(int x,int x){ // 参数重复定义
 
-
-    {
-    const int a_1 = 1;
-    const int a_1 = 1;
-    }
-
-
-    return 0;
+    return;
 }
+
+void func2(int x){ // 函数重复定义
+
+    return;
+}
+
+void func3(){
+    func1(1)
+    num = 3 //连续缺少分号
+
+    if(1{ // 缺少小括号3
+        break; //非循环break
+        continue; //非循环continue
+    }
+    return 123; // 多余的return
+}
+
+int func4(int var1,int var2{ // 缺少小括号1
+    func1(func1(1); // 缺少小括号2
+    func1(); //函数参数不匹配
+
+    int a[1][2 = {{1,2}}; // 缺少中括号
+    func1(a[1][2]); // 这个没问题
+    func1(a[1]); // 参数类型不匹配
+    return 0 // 没有分号
+}
+
 
 int main(){
+    const_num = 1; //对于const进行赋值
+    int a[no_num][const_num] = {{const_num}}; // 未声明变量no_num
 
+    printf("hello world$");  // 非法字符串
+    printf("hello world %d"); // 参数数量不正确
+    printf("hello world %d", 1, 1); // 参数数量不正确
 
-    {
-    const int a_1 = 1;
-    const int a_1 = 1;
-    }
-
-
-    return 0;
+    // 没有return
 }

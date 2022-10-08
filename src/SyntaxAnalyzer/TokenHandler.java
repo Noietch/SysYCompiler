@@ -1,8 +1,6 @@
 package SyntaxAnalyzer;
 
 import LexicalAnalyzer.Token;
-import SyntaxAnalyzer.SymbolTable.Symbol;
-import SyntaxAnalyzer.SymbolTable.SymbolTable;
 import SyntaxAnalyzer.element.*;
 import SyntaxAnalyzer.element.Number;
 
@@ -48,21 +46,13 @@ public class TokenHandler {
         return getSym(bias).categoryCode.equals(type);
     }
 
-    public String getSymList() {
-        return compUnit().toString().trim();
-    }
-
-    public CompUnit getSyntaxTreeRoot(){
+    public CompUnit getSyntaxTreeRoot() {
         return compUnit();
     }
 
     public SyntaxError getErrorList() {
         return syntaxError;
     }
-
-//    public void getSymbolTable() {
-//        currentSymbolTable.getAll(currentSymbolTable);
-//    }
 
     private CompUnit compUnit() {
         ArrayList<Decl> decls = new ArrayList<>();
@@ -130,18 +120,12 @@ public class TokenHandler {
         ArrayList<ConstExp> constExps = new ArrayList<>();
         Ident ident;
         ConstInitVal tempConstInitVal;
-        int identLine;
-        int numOfBracket = 0;
         if (SymTypeIs("IDENFR")) {
             ident = new Ident(getSym());
-            identLine = getSymLine(0);
             nextSym();
             while (true) { // 数组类型
                 if (!SymTypeIs("LBRACK")) break;
-                else {
-                    numOfBracket++;
-                    nextSym();//掠过左边括号
-                }
+                else nextSym();//掠过左边括号
                 constExps.add(constExp());
                 if (SymTypeIs("RBRACK")) nextSym();
                 else this.syntaxError.addError(ErrorType.NoRightMiddle, getSymLine(-1));
@@ -151,11 +135,6 @@ public class TokenHandler {
                 tempConstInitVal = constInitVal();
             } else throw new ParseError("[ConstDef Error] ASSIGN");
         } else throw new ParseError("[ConstDef Error] CONSTTK");
-
-        // 添加符号表
-//        if (currentSymbolTable.isDuplicateCurField(ident.getValue()))
-//            this.syntaxError.addError(ErrorType.MultiDefinition, identLine);
-//        else currentSymbolTable.addSymbol(ident, true, tempConstInitVal, null, numOfBracket);
         return new ConstDef(ident, constExps, tempConstInitVal);
     }
 
@@ -164,7 +143,6 @@ public class TokenHandler {
         VarType initType;
         if (SymTypeIs("LBRACE")) { // 数组
             nextSym();
-            initType = VarType.Array;
             while (true) {
                 if (SymTypeIs("RBRACE")) {
                     nextSym();
@@ -173,6 +151,8 @@ public class TokenHandler {
                 syntaxNodes.add(constInitVal());
                 if (SymTypeIs("COMMA")) nextSym();
             }
+            if (syntaxNodes.size() == 1) initType = VarType.oneDimArray;
+            else initType = VarType.twoDimArray;
         } else { // 普通变量
             syntaxNodes.add(constExp());
             initType = VarType.Var;
@@ -204,19 +184,13 @@ public class TokenHandler {
         ArrayList<ConstExp> constExps = new ArrayList<>();
         Ident ident;
         InitVal tempinitVal;
-        int identLine;
         if (SymTypeIs("IDENFR")) {
             ident = new Ident(getSym());
-            identLine = getSymLine(0);
             // 变量维度
-            int numOfBracket = 0;
             nextSym();
             while (true) { // 数组类型
                 if (!SymTypeIs("LBRACK")) break;
-                else {
-                    numOfBracket++;
-                    nextSym();//掠过左边括号
-                }
+                else nextSym();//掠过左边括号
                 constExps.add(constExp());
                 if (SymTypeIs("RBRACK")) nextSym();
                 else this.syntaxError.addError(ErrorType.NoRightMiddle, getSymLine(-1));
@@ -225,19 +199,10 @@ public class TokenHandler {
             if (SymTypeIs("ASSIGN")) {
                 nextSym();
                 tempinitVal = initVal();
-//                if (currentSymbolTable.isDuplicateCurField(ident.getValue()))
-//                    this.syntaxError.addError(ErrorType.MultiDefinition, identLine);
-//                else currentSymbolTable.addSymbol(ident, false, null, tempinitVal, numOfBracket);
                 return new VarDef(ident, constExps, tempinitVal);
             }
             // 没有赋值
-            else {
-                // 没有初始化，填入目前的符号表
-//                if (currentSymbolTable.isDuplicateCurField(ident.getValue()))
-//                    this.syntaxError.addError(ErrorType.MultiDefinition, identLine);
-//                else currentSymbolTable.addSymbol(ident, false, null, null, numOfBracket);
-                return new VarDef(ident, constExps);
-            }
+            else return new VarDef(ident, constExps);
         } else throw new ParseError("[VarDef Error] IDENFR");
     }
 
@@ -268,7 +233,6 @@ public class TokenHandler {
         FuncFParams tempFuncFParams = null;
         Block tempBlock;
         tempFuncType = funcType();
-        int numOfParam = 0;
 
         if (SymTypeIs("IDENFR")) {
             tempIdent = new Ident(getSym());
@@ -285,11 +249,10 @@ public class TokenHandler {
                         this.syntaxError.addError(ErrorType.NoRightSmall, getSymLine(-1));
                     }
                 } else nextSym();
-
             } else throw new ParseError("[FuncDef Error] LPARENT");
         } else throw new ParseError("[FuncDef Error] FuncDef");
         tempBlock = block(false);
-        return new FuncDef(tempFuncType, tempIdent, tempFuncFParams, tempBlock);
+        return new FuncDef(tempFuncType, tempIdent, tempFuncFParams, tempBlock, getSymLine(-1));
     }
 
     private MainFuncDef mainFuncDef() throws ParseError {
@@ -308,7 +271,7 @@ public class TokenHandler {
                 } else throw new ParseError("[MainFuncDef Error] LPARENT");
             } else throw new ParseError("[MainFuncDef Error] MAINTK");
         } else throw new ParseError("[MainFuncDef Error] INTTK");
-        return new MainFuncDef(mainToken,tempBlock);
+        return new MainFuncDef(mainToken, tempBlock, getSymLine(-1));
     }
 
     private FuncType funcType() throws ParseError {
@@ -329,7 +292,8 @@ public class TokenHandler {
             if (SymTypeIs("COMMA")) nextSym();
             else break;
         }
-        nextSym();
+        if(SymTypeIs("RPARENT")) nextSym();
+        else this.syntaxError.addError(ErrorType.NoRightSmall,getSymLine(-1));
         return new FuncFParams(funcFParams);
     }
 
@@ -337,14 +301,9 @@ public class TokenHandler {
         Ident tempIdent;
         VarType varType;
         ArrayList<ConstExp> constExps = new ArrayList<>();
-        boolean isDuple;
         if (SymTypeIs("INTTK")) {
             nextSym();
             tempIdent = new Ident(getSym());
-            int identLine = getSymLine(0);
-//            isDuple = currentSymbolTable.isDuplicateCurField(tempIdent.getValue());
-//            if (isDuple)
-//                this.syntaxError.addError(ErrorType.MultiDefinition, identLine);
             varType = VarType.Var;
             // 参数是数组
             nextSym();
@@ -359,18 +318,15 @@ public class TokenHandler {
                         varType = VarType.twoDimArray;
                         if (!SymTypeIs("RBRACK")) {
                             this.syntaxError.addError(ErrorType.NoRightMiddle, getSymLine(-1));
-//                            if (!isDuple) currentSymbolTable.addSymbol(tempIdent, varType);
                             return new FuncFParam(new BType(), tempIdent, varType, constExps);
                         } else nextSym();
                     }
                 } else {
                     this.syntaxError.addError(ErrorType.NoRightMiddle, getSymLine(-1));
-//                    if (!isDuple) currentSymbolTable.addSymbol(tempIdent, varType);
                     return new FuncFParam(new BType(), tempIdent, varType, constExps);
                 }
             }
         } else throw new ParseError("[FuncFParam Error] INTTK");
-//        if (!isDuple) currentSymbolTable.addSymbol(tempIdent, varType);
         return new FuncFParam(new BType(), tempIdent, varType, constExps);
     }
 
@@ -399,11 +355,10 @@ public class TokenHandler {
         FormatString formatString;
         Cond tempCond;
         Block tempBlock;
-        LVal tempLVal;
+        LVal tempLVal = null;
         // print
         if (SymTypeIs("PRINTFTK")) {
-            // 记录printf所在的行数
-//            int printPos = getSymLine(0);
+            Ident ident = new Ident(getSym());
             type = Stmt.Type.Print;
             nextSym();
             if (SymTypeIs("LPARENT")) {
@@ -413,8 +368,6 @@ public class TokenHandler {
                     // 检测格式化字符串合法性
                     if (!formatString.check())
                         this.syntaxError.addError(ErrorType.IllegalSymbol, formatString.getLine());
-                    // 输出格式化字符串%d的个数
-                    int paramNum = formatString.paramNum();
                     // 跳过逗号
                     nextSym();
                     while (true) {
@@ -429,17 +382,16 @@ public class TokenHandler {
                         }
                     }
                     // 检测参数个数
-//                    if (exps.size() != paramNum) this.syntaxError.addError(ErrorType.PrintNum, printPos);
                     if (SymTypeIs("SEMICN")) nextSym();
                     else this.syntaxError.addError(ErrorType.NoSemi, getSym(-1).lineNum);
-                    return new Stmt(exps, formatString, type);
+                    return new Stmt(exps, formatString, type, ident);
                 }
             }
         }
         // return
         else if (SymTypeIs("RETURNTK")) {
             type = Stmt.Type.Return;
-//            int returnLine = getSymLine(0);
+            Ident tempIdent = new Ident(getSym());
             nextSym();
             if (!SymTypeIs("SEMICN")) {
                 int tempPos = this.curPos;
@@ -451,10 +403,7 @@ public class TokenHandler {
                 if (SymTypeIs("SEMICN")) nextSym();
                 else this.syntaxError.addError(ErrorType.NoSemi, getSym(-1).lineNum);
             } else nextSym();
-//            if (currentSymbolTable.checkFatherFuncType(exps.size())) {
-//                this.syntaxError.addError(ErrorType.WrongReturn, returnLine);
-//            }
-            return new Stmt(exps, type);
+            return new Stmt(exps, type, tempIdent);
         }
         // break
         else if (SymTypeIs("BREAKTK")) {
@@ -508,66 +457,52 @@ public class TokenHandler {
         }
         // block
         else if (SymTypeIs("LBRACE")) {
-//            currentSymbolTable = currentSymbolTable.newSon();
             tempBlock = block(inLoop);
             type = Stmt.Type.Block;
-//            currentSymbolTable = currentSymbolTable.back();
             return new Stmt(type, tempBlock);
         } else {
-            boolean flag = true;
-            int idx = 0;
-            while (!SymTypeIs("SEMICN", idx)) {
-                if (SymTypeIs("ASSIGN", idx)) {
-                    flag = false;
-                    break;
-                }
-                idx++;
+            int tempPos = this.curPos;
+            try {
+                tempLVal = lVal();
+            } catch (Exception ignored) {
             }
             // expression
-            if (flag) {
+            if (!SymTypeIs("ASSIGN")) {
+                this.curPos = tempPos;
                 type = Stmt.Type.Expression;
-                if (!SymTypeIs("SEMICN")) {
-                    exps.add(exp());
-                }
-                nextSym();
-                return new Stmt(exps, type);
+                if (!SymTypeIs("SEMICN")) exps.add(exp());
+                if (SymTypeIs("SEMICN")) nextSym();
+                else this.syntaxError.addError(ErrorType.NoSemi, getSymLine(-1));
+                return new Stmt(exps, type, null);
             }
             // assign
             else {
-                tempLVal = lVal();
-//                if (currentSymbolTable.checkIsConst(tempLVal.getName()))
-//                    this.syntaxError.addError(ErrorType.AssignConst, getSymLine(-1));
-
-                if (SymTypeIs("ASSIGN")) {
-                    // getint()
-                    if (SymTypeIs("GETINTTK", 1)) {
-                        type = Stmt.Type.AssignmentInput;
+                // getint()
+                if (SymTypeIs("GETINTTK", 1)) {
+                    type = Stmt.Type.AssignmentInput;
+                    nextSym();
+                    nextSym();
+                    if (SymTypeIs("LPARENT")) {
                         nextSym();
-                        nextSym();
-                        if (SymTypeIs("LPARENT")) {
-                            nextSym();
-                            if (SymTypeIs("RPARENT")) nextSym();
-                            else this.syntaxError.addError(ErrorType.NoRightSmall, getSymLine(-1));
+                        if (SymTypeIs("RPARENT")) nextSym();
+                        else this.syntaxError.addError(ErrorType.NoRightSmall, getSymLine(-1));
 
-                            if (SymTypeIs("SEMICN")) nextSym();
-                            else this.syntaxError.addError(ErrorType.NoRightSmall, getSymLine(-1));
-
-                            return new Stmt(tempLVal, type);
-                        }
-                    }
-                    // left value = exp
-                    else {
-                        nextSym();
-                        exps.add(exp());
-                        if (SymTypeIs("SEMICN")) {
-                            type = Stmt.Type.AssignmentExp;
-                            nextSym();
-                            return new Stmt(tempLVal, exps, type);
-                        }
+                        if (SymTypeIs("SEMICN")) nextSym();
+                        else this.syntaxError.addError(ErrorType.NoSemi, getSymLine(-1));
+                        return new Stmt(tempLVal, type);
                     }
                 }
+                // left value = exp
+                else {
+                    nextSym();
+                    exps.add(exp());
+                    type = Stmt.Type.AssignmentExp;
+                    if (SymTypeIs("SEMICN")) nextSym();
+                    else this.syntaxError.addError(ErrorType.NoSemi, getSymLine(-1));
+                    return new Stmt(tempLVal, exps, type);
+                }
+
             }
-            throw new ParseError("stmt");
         }
         throw new ParseError("stmt");
     }
@@ -583,19 +518,18 @@ public class TokenHandler {
     private LVal lVal() throws ParseError {
         if (SymTypeIs("IDENFR")) {
             Ident ident = new Ident(getSym());
-//            if (currentSymbolTable.isExistUpField(ident.getValue()) == null)
-//                this.syntaxError.addError(ErrorType.Undefined, getSymLine(0));
             VarType type = VarType.Var;
             ArrayList<Exp> exps = new ArrayList<>();
             if (SymTypeIs("LBRACK", 1)) {
                 nextSym();
-                type = VarType.Array;
                 while (SymTypeIs("LBRACK")) {
                     nextSym();
                     exps.add(exp());
                     if (SymTypeIs("RBRACK")) nextSym();
                     else this.syntaxError.addError(ErrorType.NoRightMiddle, getSymLine(-1));
                 }
+                if (exps.size() == 1) type = VarType.oneDimArray;
+                else type = VarType.twoDimArray;
             } else nextSym();
             return new LVal(ident, type, exps);
         } else throw new ParseError("[LVal Error] IDENFR");
@@ -607,7 +541,7 @@ public class TokenHandler {
             nextSym();
             Exp tempExp = exp();
             if (SymTypeIs("RPARENT")) nextSym();
-            else this.syntaxError.addError(ErrorType.NoRightMiddle, getSymLine(-1));
+            else this.syntaxError.addError(ErrorType.NoRightSmall, getSymLine(-1));
             return new PrimaryExp(tempExp);
         } else return new PrimaryExp(lVal());
     }
@@ -626,32 +560,22 @@ public class TokenHandler {
         UnaryExp tempUnaryExp;
         if (SymTypeIs("IDENFR") && SymTypeIs("LPARENT", 1)) {
             ident = new Ident(getSym());
-            int identLine = getSymLine(0);
-            // 检查上文是否有相关变量
-//            Symbol upSymbol = currentSymbolTable.isExistUpField(ident.getValue());
-//            if (upSymbol == null) this.syntaxError.addError(ErrorType.Undefined, getSymLine(0));
             nextSym(); // skip func name
             nextSym(); // skip (
             if (!SymTypeIs("RPARENT")) {
                 int tempPos = this.curPos;
                 try {
                     funcRParams = funcRParams();
-//                    if (upSymbol != null && funcRParams.getNumOfParam() != upSymbol.paramsNum)
-//                        this.syntaxError.addError(ErrorType.ParamNumber, identLine);
                     if (SymTypeIs("RPARENT")) nextSym();
                     else this.syntaxError.addError(ErrorType.NoRightSmall, getSymLine(-1));
                     return new UnaryExp(ident, funcRParams);
                 } catch (Exception e) {
                     this.curPos = tempPos;
                     this.syntaxError.addError(ErrorType.NoRightSmall, getSymLine(-1));
-//                    if (upSymbol != null && 0 != upSymbol.paramsNum)
-//                        this.syntaxError.addError(ErrorType.ParamNumber, identLine);
                     return new UnaryExp(ident);
                 }
             } else {
                 nextSym();
-//                if (upSymbol != null && 0 != upSymbol.paramsNum)
-//                    this.syntaxError.addError(ErrorType.ParamNumber, identLine);
                 return new UnaryExp(ident);
             }
         } else if (SymTypeIs("PLUS") || SymTypeIs("MINU") || SymTypeIs("NOT")) {

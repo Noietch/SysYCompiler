@@ -7,7 +7,8 @@ import SyntaxAnalyzer.element.InitVal;
 
 public class Symbol {
     public enum Type {
-        func,
+        void_fuc,
+        int_func,
         var,
         oneDimArray,
         twoDimArray,
@@ -23,6 +24,7 @@ public class Symbol {
     public Type type;
     public FuncType returnType;
     public FuncFParams funcFParams;
+
     @Override
     public String toString() {
         return "[Symbol] " +
@@ -62,6 +64,7 @@ public class Symbol {
     public void setParamsNum(int paramsNum) {
         this.paramsNum = paramsNum;
     }
+
     public void setFuncFParams(FuncFParams funcFParams) {
         this.funcFParams = funcFParams;
     }

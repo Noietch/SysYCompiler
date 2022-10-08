@@ -1,5 +1,8 @@
 package SyntaxAnalyzer.element;
 
+import SyntaxAnalyzer.SymbolTable.Symbol;
+import SyntaxAnalyzer.SymbolTable.SymbolTable;
+
 import java.util.ArrayList;
 
 public class MulExp extends SyntaxNode{
@@ -23,5 +26,9 @@ public class MulExp extends SyntaxNode{
             idx++;
         }
         return res.toString();
+    }
+
+    public Symbol.Type getType(SymbolTable symbolTable) {
+        return unaryExps.get(0).getType(symbolTable);
     }
 }

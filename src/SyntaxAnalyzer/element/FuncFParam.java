@@ -1,5 +1,7 @@
 package SyntaxAnalyzer.element;
 
+import SyntaxAnalyzer.SymbolTable.Symbol;
+
 import java.util.ArrayList;
 
 public class FuncFParam extends SyntaxNode{
@@ -44,5 +46,11 @@ public class FuncFParam extends SyntaxNode{
         }
         res.append("<FuncFParam>\n");
         return res.toString();
+    }
+
+    public boolean checkType(Symbol.Type type){
+        if(varType == VarType.Var && (type == Symbol.Type.var ||type == Symbol.Type.int_func)) return true;
+        else if(varType == VarType.oneDimArray && type == Symbol.Type.oneDimArray) return true;
+        else return varType == VarType.twoDimArray && type == Symbol.Type.twoDimArray;
     }
 }

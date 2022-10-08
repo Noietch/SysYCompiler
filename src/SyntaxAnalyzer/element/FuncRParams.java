@@ -1,8 +1,11 @@
 package SyntaxAnalyzer.element;
 
+import SyntaxAnalyzer.SymbolTable.Symbol;
+import SyntaxAnalyzer.SymbolTable.SymbolTable;
+
 import java.util.ArrayList;
 
-public class FuncRParams extends SyntaxNode{
+public class FuncRParams extends SyntaxNode {
     public final ArrayList<Exp> exps;
 
     public FuncRParams(ArrayList<Exp> exps) {
@@ -21,7 +24,15 @@ public class FuncRParams extends SyntaxNode{
         return res.toString();
     }
 
-    public int getNumOfParam(){
+    public int getNumOfParam() {
         return exps.size();
+    }
+
+    public ArrayList<Symbol.Type> getParamType(SymbolTable symbolTable){
+        ArrayList<Symbol.Type> res = new ArrayList<>();
+        for(Exp exp:exps){
+            res.add(exp.getType(symbolTable));
+        }
+        return res;
     }
 }
