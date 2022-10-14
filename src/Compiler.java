@@ -1,6 +1,6 @@
-import LexicalAnalyzer.Parser;
-import SyntaxAnalyzer.ErrorHandler;
-import SyntaxAnalyzer.TokenHandler;
+import Front.LexicalAnalyzer.Parser;
+import Front.SyntaxAnalyzer.TokenHandler;
+import Middle.IRBuilder;
 import Utils.FileUtils;
 import java.io.IOException;
 
@@ -11,13 +11,10 @@ public class Compiler {
             Parser p = new Parser(src);
             p.getSymbol();
             TokenHandler tokenHandler = new TokenHandler(p.getTokenArrayList());
-            ErrorHandler errorHandler = new ErrorHandler(tokenHandler.getSyntaxTreeRoot(),tokenHandler.getErrorList());
-            errorHandler.travelSyntaxTree(errorHandler.syntaxTreeRoot);
-            String symbols = errorHandler.syntaxTreeRoot.toString().trim();
-            String error = errorHandler.getErrorList().trim();
-            System.out.println(error);
-            FileUtils.toFile(error,"error.txt");
-            FileUtils.toFile(symbols,"output.txt");
+            IRBuilder irBuilder = new IRBuilder(tokenHandler.getSyntaxTreeRoot());
+            String ir = irBuilder.getIR();
+            System.out.println(ir);
+            FileUtils.toFile(ir,"output.txt");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

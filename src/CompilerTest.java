@@ -1,6 +1,6 @@
-import LexicalAnalyzer.Parser;
-import SyntaxAnalyzer.ErrorHandler;
-import SyntaxAnalyzer.TokenHandler;
+import Front.LexicalAnalyzer.Parser;
+import Front.SyntaxAnalyzer.ErrorHandler;
+import Front.SyntaxAnalyzer.TokenHandler;
 import Utils.FileUtils;
 
 import java.io.IOException;
