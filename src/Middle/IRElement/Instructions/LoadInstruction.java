@@ -14,6 +14,6 @@ public class LoadInstruction extends BaseInstruction {
 
     @Override
     public String toString() {
-        return result + "= load i32,i32* " + value1;
+        return result + " = load i32, i32* " + value1;
     }
 }

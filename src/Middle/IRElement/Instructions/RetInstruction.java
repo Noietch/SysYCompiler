@@ -10,6 +10,6 @@ public class RetInstruction extends BaseInstruction {
     @Override
     public String toString() {
         if (value1 == null) return "ret void";
-        return "ret i32 " + value1.name;
+        return "ret i32 " + value1;
     }
 }

@@ -4,7 +4,7 @@ import Middle.IRElement.Op;
 import Middle.IRElement.User;
 import Middle.IRElement.Value;
 
-public class IcmpInstruction extends BaseInstruction{
+public class IcmpInstruction extends BaseInstruction {
     public IcmpInstruction(User result, Value value1, Value value2, Op op) {
         this.result = result;
         this.value1 = value1;
@@ -17,6 +17,6 @@ public class IcmpInstruction extends BaseInstruction{
 
     @Override
     public String toString() {
-        return super.toString();
+        return this.result + " = icmp " + op + " " + "i32 " + value1 + ", " + value2;
     }
 }

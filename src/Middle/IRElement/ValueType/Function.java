@@ -29,9 +29,9 @@ public class Function extends Value {
     public String toString() {
         StringBuilder res = new StringBuilder();
         if (returnType.type.equals("int"))
-            res.append("define dso_local i32 @").append(this.name).append("(){\n");
+            res.append("define dso_local i32 ").append(this.name).append("(){\n");
         else
-            res.append("define dso_local void @").append(this.name).append("(){\n");
+            res.append("define dso_local void ").append(this.name).append("(){\n");
         for (BasicBlock basicBlock : basicBlocks) {
             res.append(basicBlock);
         }

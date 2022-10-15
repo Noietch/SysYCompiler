@@ -25,7 +25,7 @@ public class Module {
     public String toString() {
         StringBuilder res = new StringBuilder();
         for(Function function:functions){
-            res.append(function);
+            res.append(function).append("\n");
         }
         return res.toString();
     }

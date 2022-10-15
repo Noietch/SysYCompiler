@@ -5,7 +5,7 @@ import Middle.IRElement.User;
 import Middle.IRElement.Value;
 
 public class StoreInstruction extends BaseInstruction {
-    public StoreInstruction(Value value1, Value value2, Op op) {
+    public StoreInstruction(Value value1, Value value2) {
         this.value1 = value1;
         this.value2 = value2;
     }
