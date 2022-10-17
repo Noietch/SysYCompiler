@@ -23,4 +23,8 @@ public class Exp extends SyntaxNode {
     public Symbol.Type getType(SymbolTable symbolTable) {
         return addExp.getType(symbolTable);
     }
+
+    public int eval(){
+        return addExp.eval();
+    }
 }

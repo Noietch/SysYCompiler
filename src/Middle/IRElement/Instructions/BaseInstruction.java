@@ -1,6 +1,5 @@
 package Middle.IRElement.Instructions;
 
-import Front.SyntaxAnalyzer.Element.Stmt;
 import Middle.IRElement.BasicBlock;
 import Middle.IRElement.Op;
 import Middle.IRElement.User;

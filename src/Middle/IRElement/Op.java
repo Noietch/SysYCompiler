@@ -1,7 +1,6 @@
 package Middle.IRElement;
 
 import Front.LexicalAnalyzer.Token;
-import Front.SyntaxAnalyzer.Element.Ident;
 
 public class Op {
     public enum Type {

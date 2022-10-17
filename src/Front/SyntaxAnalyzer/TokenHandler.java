@@ -590,9 +590,9 @@ public class TokenHandler {
     }
 
     private UnaryOp unaryOp() {
-        if (SymTypeIs("PLUS")) return new UnaryOp(UnaryOp.type.PLUS);
-        else if (SymTypeIs("MINU")) return new UnaryOp(UnaryOp.type.MINUS);
-        else if (SymTypeIs("NOT")) return new UnaryOp(UnaryOp.type.NOT);
+        if (SymTypeIs("PLUS")) return new UnaryOp(UnaryOp.Type.PLUS);
+        else if (SymTypeIs("MINU")) return new UnaryOp(UnaryOp.Type.MINUS);
+        else if (SymTypeIs("NOT")) return new UnaryOp(UnaryOp.Type.NOT);
         else return null;
     }
 

@@ -1,7 +1,5 @@
 package Middle.IRElement.Instructions;
 
-import Middle.IRElement.Op;
-import Middle.IRElement.User;
 import Middle.IRElement.Value;
 
 public class StoreInstruction extends BaseInstruction {

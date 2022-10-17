@@ -15,4 +15,8 @@ public class ConstExp extends SyntaxNode{
         res.append("<ConstExp>\n");
         return res.toString();
     }
+
+    public int eval(){
+        return addExp.eval();
+    }
 }

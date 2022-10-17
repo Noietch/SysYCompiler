@@ -1,28 +1,28 @@
 package Front.SyntaxAnalyzer.Element;
 
 public class UnaryOp extends SyntaxNode{
-    public enum type{
+    public enum Type {
         MINUS,
         NOT,
         PLUS,
     }
 
-    public final type opType;
+    public final Type opType;
 
-    public UnaryOp(type type) {
+    public UnaryOp(Type type) {
         this.opType = type;
     }
 
     @Override
     public String toString() {
         StringBuilder res = new StringBuilder();
-        if (this.opType == UnaryOp.type.MINUS) {
+        if (this.opType == Type.MINUS) {
             res.append("MINU -\n");
         }
-        else if (this.opType == UnaryOp.type.NOT) {
+        else if (this.opType == Type.NOT) {
             res.append("NOT !\n");
         }
-        else if (this.opType == UnaryOp.type.PLUS){
+        else if (this.opType == Type.PLUS){
             res.append("PLUS +\n");
         }
         res.append("<UnaryOp>\n");

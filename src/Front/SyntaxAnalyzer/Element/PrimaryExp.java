@@ -55,4 +55,10 @@ public class PrimaryExp extends SyntaxNode {
     public String getNumber(){
         return number.intConst.token.value;
     }
+
+    public int eval(){
+        if(number != null) return Integer.parseInt(number.intConst.token.value);
+        else if (lVal != null) throw new RuntimeException("ident can not eval");
+        else return exp.eval();
+    }
 }

@@ -6,6 +6,7 @@ import Middle.IRElement.Instructions.*;
 import Middle.IRElement.Module;
 import Middle.IRElement.ValueType.Constant;
 import Middle.IRElement.ValueType.Function;
+import Middle.IRElement.ValueType.GlobalVariable;
 
 public class IRBuilder {
     public CompUnit syntaxTreeRoot; // 语法树根
@@ -34,10 +35,9 @@ public class IRBuilder {
     public void visitCompUnit(CompUnit compUnit) {
         if (compUnit.decls.size() != 0)
             for (Decl decl : compUnit.decls) visitDecl(decl);
-        else if (compUnit.funcDefs.size() != 0)
+        if (compUnit.funcDefs.size() != 0)
             for (FuncDef funcDef : compUnit.funcDefs) visitFuncDef(funcDef);
-        else
-            visitMainFuncDef(compUnit.mainFuncDef);
+        visitMainFuncDef(compUnit.mainFuncDef);
     }
 
     public void visitDecl(Decl decl) {
@@ -98,18 +98,23 @@ public class IRBuilder {
     }
 
     public void visitConstDef(ConstDef constDef) {
-        Value value = new Value(VirtualRegister.getRegister());
-        if (constDef.constExps.size() == 0) value.setType(Value.Type.integer);
-        else throw new RuntimeException("[visitConstDef] Array not implement");
-        // 分配空间
-        AllocateInstruction allocateInstruction = new AllocateInstruction(value);
-        currentBasicBlock.appendInst(allocateInstruction);
-        // 初值
-        Value initValValue = visitConstInitVal(constDef.constInitVal);
-        StoreInstruction storeInstruction = new StoreInstruction(initValValue, value);
-        currentBasicBlock.appendInst(storeInstruction);
-        // 记录符号
-        currentValueTable.addValue(constDef.ident.token.value, value);
+        if (currentValueTable.father != null) {
+            Value value = new Value(VirtualRegister.getRegister());
+            if (constDef.constExps.size() == 0) value.setType(Value.Type.integer);
+            else throw new RuntimeException("[visitConstDef] Array not implement");
+            // 分配空间
+            AllocateInstruction allocateInstruction = new AllocateInstruction(value);
+            currentBasicBlock.appendInst(allocateInstruction);
+            // 初值
+            Value initValValue = visitConstInitVal(constDef.constInitVal);
+            StoreInstruction storeInstruction = new StoreInstruction(initValValue, value);
+            currentBasicBlock.appendInst(storeInstruction);
+            // 记录符号
+            currentValueTable.addValue(constDef.ident.token.value, value);
+        } else {
+            GlobalVariable globalVariable = new GlobalVariable(constDef.ident.token.value, true, constDef.constInitVal, null);
+            currentModule.addGlobalVariable(globalVariable);
+        }
     }
 
     public Value visitInitVal(InitVal initVal) {
@@ -119,19 +124,25 @@ public class IRBuilder {
     }
 
     public void visitVarDef(VarDef varDef) {
-        Value value = new Value(VirtualRegister.getRegister());
-        if (varDef.constExps.size() == 0) value.setType(Value.Type.integer);
-        else throw new RuntimeException("[visitVarDef] Array not implement");
-        AllocateInstruction allocateInstruction = new AllocateInstruction(value);
-        currentBasicBlock.appendInst(allocateInstruction);
-        // 初值
-        if (varDef.initVal != null) {
-            Value initValValue = visitInitVal(varDef.initVal);
-            StoreInstruction storeInstruction = new StoreInstruction(initValValue, value);
-            currentBasicBlock.appendInst(storeInstruction);
+        if (currentValueTable.father != null) {
+            Value value = new Value(VirtualRegister.getRegister());
+            if (varDef.constExps.size() == 0) value.setType(Value.Type.integer);
+            else throw new RuntimeException("[visitVarDef] Array not implement");
+            AllocateInstruction allocateInstruction = new AllocateInstruction(value);
+            currentBasicBlock.appendInst(allocateInstruction);
+            // 初值
+            if (varDef.initVal != null) {
+                Value initValValue = visitInitVal(varDef.initVal);
+                StoreInstruction storeInstruction = new StoreInstruction(initValValue, value);
+                currentBasicBlock.appendInst(storeInstruction);
+            }
+            // 记录符号
+            currentValueTable.addValue(varDef.ident.token.value, value);
         }
-        // 记录符号
-        currentValueTable.addValue(varDef.ident.token.value, value);
+        else {
+            GlobalVariable globalVariable = new GlobalVariable(varDef.ident.token.value, false, null, varDef.initVal);
+            currentModule.addGlobalVariable(globalVariable);
+        }
     }
 
     public Value visitExp(Exp exp) {
@@ -148,14 +159,14 @@ public class IRBuilder {
             currentBasicBlock.appendInst(callInstruction);
             return user;
         } else {
-            if (unaryExp.unaryOp.opType == UnaryOp.type.MINUS) {
+            if (unaryExp.unaryOp.opType == UnaryOp.Type.MINUS) {
                 Value value1 = new Constant("0");
                 Value value2 = visitUnaryExp(unaryExp.unaryExp);
                 Op op = new Op(Op.Type.sub);
                 User res = new User(VirtualRegister.getRegister());
                 currentBasicBlock.appendInst(new BinaryInstruction(res, value1, value2, op));
                 return res;
-            } else if (unaryExp.unaryOp.opType == UnaryOp.type.PLUS) {
+            } else if (unaryExp.unaryOp.opType == UnaryOp.Type.PLUS) {
                 return visitUnaryExp(unaryExp.unaryExp);
             } else throw new RuntimeException();
         }
@@ -193,6 +204,7 @@ public class IRBuilder {
         else if (stmt.getType() == Stmt.Type.AssignmentExp) visitAssignmentExp(stmt);
         else if (stmt.getType() == Stmt.Type.Branch_IF) visitIf(stmt);
         else if (stmt.getType() == Stmt.Type.Branch_ELSE) visitIf(stmt);
+        else if (stmt.getType() == Stmt.Type.Loop) visitLoop(stmt);
         else if (stmt.getType() == Stmt.Type.Block) {
             currentValueTable = currentValueTable.newSon();
             visitBlock(stmt.block);
@@ -221,7 +233,7 @@ public class IRBuilder {
         BranchInstruction out = new BranchInstruction(null);
         currentBasicBlock.appendInst(out);
 
-        BasicBlock outBlock = null;
+        BasicBlock outBlock;
         if (stmt.type == Stmt.Type.Branch_ELSE) {
             // 访问else中的内容
             BasicBlock elseBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
@@ -232,11 +244,40 @@ public class IRBuilder {
             currentBasicBlock.appendInst(out2);
             outBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
             out2.setLabelTrue(outBlock);
-        }
-        else outBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
+        } else outBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
         branchInstruction.setLabelFalse(outBlock);
         out.setLabelTrue(outBlock);
         currentBasicBlock = outBlock;
+        currentFunction.addBasicBlock(outBlock);
+    }
+
+    public void visitLoop(Stmt stmt){
+        // 新建判断基本分支指令，加到目前的基本块中
+        BranchInstruction judge = new BranchInstruction(null);
+        currentBasicBlock.appendInst(judge);
+        // 新建判断基本块，回填到判断分支指令
+        BasicBlock judgeBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
+        judge.setLabelTrue(judgeBlock);
+        // 进入判断基本块
+        currentBasicBlock = judgeBlock;
+        Value cond = visitCond(stmt.cond);
+        // 新建分支指令
+        BranchInstruction branchInstruction = new BranchInstruction(cond, null, null);
+        currentBasicBlock.appendInst(branchInstruction);
+        // 新建ture基本块,回填判断块中的分支指令
+        BasicBlock ifBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
+        branchInstruction.setLabelTrue(ifBlock);
+        currentBasicBlock = ifBlock;
+        visitStmt(stmt.stmts.get(0));
+        // 跳回判断基本块
+        currentBasicBlock.appendInst(new BranchInstruction(judgeBlock));
+        // 新建out基本块
+        BasicBlock outBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
+        branchInstruction.setLabelFalse(outBlock);
+        currentBasicBlock = outBlock;
+
+        currentFunction.addBasicBlock(judgeBlock);
+        currentFunction.addBasicBlock(ifBlock);
         currentFunction.addBasicBlock(outBlock);
     }
 

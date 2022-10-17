@@ -24,6 +24,9 @@ public class Module {
     @Override
     public String toString() {
         StringBuilder res = new StringBuilder();
+        for(GlobalVariable globalVariable:globalVariables){
+            res.append(globalVariable).append("\n");
+        }
         for(Function function:functions){
             res.append(function).append("\n");
         }
