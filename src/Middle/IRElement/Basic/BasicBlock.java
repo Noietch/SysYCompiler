@@ -1,7 +1,7 @@
-package Middle.IRElement;
+package Middle.IRElement.Basic;
 
 import Middle.IRElement.Instructions.BaseInstruction;
-import Middle.IRElement.ValueType.Function;
+import Middle.IRElement.Value;
 import Utils.LinkedList;
 
 public class BasicBlock extends Value {
@@ -14,15 +14,26 @@ public class BasicBlock extends Value {
         this.instructions = new LinkedList<>();
     }
 
+    public BasicBlock(Function parent) {
+        this.parent = parent;
+        this.instructions = new LinkedList<>();
+    }
+
     public void appendInst(BaseInstruction instruction) {
         instructions.append(instruction);
     }
 
+    public void setVirtualNum(String num) {
+        this.name = num;
+    }
 
     public void insertInstBefore(BaseInstruction nextInst, BaseInstruction newInst) {
         instructions.insertBefore(nextInst, newInst);
     }
 
+    public String getDescriptor(){
+        return "label " + getName();
+    }
 
     @Override
     public String toString() {
@@ -32,5 +43,23 @@ public class BasicBlock extends Value {
             res.append("    ").append(instruction).append("\n");
         }
         return res.toString();
+    }
+
+    public static class LoopBlock extends BasicBlock {
+
+        public BasicBlock judgeBranch;
+        public BasicBlock falseBranch;
+
+        public LoopBlock(String name, Function parent) {
+            super(name, parent);
+        }
+
+        public void setJudgeBranch(BasicBlock judgeBranch) {
+            this.judgeBranch = judgeBranch;
+        }
+
+        public void setFalseBranch(BasicBlock falseBranch) {
+            this.falseBranch = falseBranch;
+        }
     }
 }

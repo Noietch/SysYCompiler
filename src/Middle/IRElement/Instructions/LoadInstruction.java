@@ -1,6 +1,5 @@
 package Middle.IRElement.Instructions;
 
-import Middle.IRElement.Op;
 import Middle.IRElement.User;
 import Middle.IRElement.Value;
 
@@ -14,6 +13,6 @@ public class LoadInstruction extends BaseInstruction {
 
     @Override
     public String toString() {
-        return result + " = load i32, i32* " + value1;
+        return result.getName() + " = load " + result.getType() + ", " + value1.getDescriptor();
     }
 }

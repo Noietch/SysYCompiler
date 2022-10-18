@@ -1,4 +1,4 @@
-package Middle.IRElement;
+package Middle.IRElement.Basic;
 
 import Front.LexicalAnalyzer.Token;
 

@@ -1,6 +1,6 @@
 package Middle.IRElement.Instructions;
 
-import Middle.IRElement.BasicBlock;
+import Middle.IRElement.Basic.BasicBlock;
 import Middle.IRElement.Value;
 
 public class BranchInstruction extends BaseInstruction {
@@ -26,9 +26,12 @@ public class BranchInstruction extends BaseInstruction {
 
     @Override
     public String toString() {
-        if (cond != null)
-            return "br i1 " + cond + ", label %" + value1.name + ", label %" + value2.name;
-        else
-            return "br label %" + value1.name;
+        BasicBlock B1 = (BasicBlock) value1;
+        if (cond != null) {
+            BasicBlock B2 = (BasicBlock) value2;
+            return "br i1 " + cond.getName() + ", " + B1.getDescriptor() + ", " + B2.getDescriptor();
+        } else {
+            return "br " + B1.getDescriptor();
+        }
     }
 }

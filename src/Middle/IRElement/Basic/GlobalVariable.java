@@ -1,4 +1,4 @@
-package Middle.IRElement.ValueType;
+package Middle.IRElement.Basic;
 
 import Front.SyntaxAnalyzer.Element.*;
 import Middle.IRElement.Value;

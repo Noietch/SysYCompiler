@@ -1,39 +1,39 @@
 package Middle.IRElement;
 
+import Middle.IRElement.Type.DataType;
+import Middle.IRElement.Type.ValueType;
 import Utils.LinkedList;
 import Utils.LinkedListNode;
 
 public class Value extends LinkedListNode {
-    public enum Type {
-        globalVariable,
-        integer,
-        function,
-        array,
-        pointer
-    }
-
     public String name;
     public LinkedList<Use> uses;
 
-    public Type type;
+    public ValueType.Type type;
 
     public Value() {
 
     }
 
-    public Value(String name) {
+    public Value(String name, ValueType.Type type) {
         this.name = name;
+        this.type = type;
         this.uses = new LinkedList<>();
     }
 
-    public void setType(Type type) {
-        this.type = type;
+    public String getType(){
+        return this.type.getType();
     }
 
-    @Override
-    public String toString() {
+    public String getName(){
         return "%" + name;
     }
+
+    public String getDescriptor(){
+        return String.format("%s %s",this.type,getName());
+    }
 }
+
+
 
 

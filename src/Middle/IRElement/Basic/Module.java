@@ -1,7 +1,5 @@
-package Middle.IRElement;
+package Middle.IRElement.Basic;
 
-import Middle.IRElement.ValueType.Function;
-import Middle.IRElement.ValueType.GlobalVariable;
 import Utils.LinkedList;
 
 public class Module {

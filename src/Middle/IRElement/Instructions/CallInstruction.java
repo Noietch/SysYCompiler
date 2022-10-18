@@ -1,7 +1,7 @@
 package Middle.IRElement.Instructions;
 
 import Middle.IRElement.User;
-import Middle.IRElement.ValueType.Function;
+import Middle.IRElement.Basic.Function;
 
 public class CallInstruction extends BaseInstruction{
 
@@ -13,9 +13,6 @@ public class CallInstruction extends BaseInstruction{
     @Override
     public String toString() {
         Function function = (Function) this.value1;
-        if(function.returnType.type.equals("int"))
-            return this.result + " = call i32 " + function.name + "()";
-        else
-            return this.result + " = call void " + function.name + "()";
+        return this.result + " = call " + function.getDescriptor();
     }
 }

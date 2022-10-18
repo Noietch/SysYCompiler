@@ -1,6 +1,6 @@
 package Middle.IRElement.Instructions;
 
-import Middle.IRElement.Op;
+import Middle.IRElement.Basic.Op;
 import Middle.IRElement.User;
 import Middle.IRElement.Value;
 
@@ -17,6 +17,6 @@ public class IcmpInstruction extends BaseInstruction {
 
     @Override
     public String toString() {
-        return this.result + " = icmp " + op + " " + "i32 " + value1 + ", " + value2;
+        return this.result.getName() + " = icmp " + op + " " + value1.getType() + " " + value1.getName() + ", " + value2.getName();
     }
 }

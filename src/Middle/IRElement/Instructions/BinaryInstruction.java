@@ -1,6 +1,6 @@
 package Middle.IRElement.Instructions;
 
-import Middle.IRElement.Op;
+import Middle.IRElement.Basic.Op;
 import Middle.IRElement.User;
 import Middle.IRElement.Value;
 
@@ -17,6 +17,6 @@ public class BinaryInstruction extends BaseInstruction {
 
     @Override
     public String toString() {
-        return this.result + " = " + this.op + " i32 " + this.value1 + ", " + this.value2;
+        return this.result.getName() + " = " + this.op + " " + this.value1.getType() + " " + this.value1.getName() + ", " + this.value2.getName();
     }
 }

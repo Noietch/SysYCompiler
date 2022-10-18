@@ -1,12 +1,10 @@
 package Middle.IRElement.Instructions;
 
-import Middle.IRElement.BasicBlock;
-import Middle.IRElement.Op;
+import Middle.IRElement.Basic.Op;
 import Middle.IRElement.User;
 import Middle.IRElement.Value;
 
 public class BaseInstruction extends Value {
-    public BasicBlock parent;
     public Value value1;
     public Value value2;
 
@@ -24,9 +22,5 @@ public class BaseInstruction extends Value {
 
         this.result.addOperand(value1);
         this.result.addOperand(value2);
-    }
-
-    public void setParent(BasicBlock parent) {
-        this.parent = parent;
     }
 }

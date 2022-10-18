@@ -1,5 +1,6 @@
 package Middle.IRElement.Instructions;
 
+import Middle.IRElement.Type.ValueType;
 import Middle.IRElement.Value;
 
 public class AllocateInstruction extends BaseInstruction{
@@ -9,9 +10,6 @@ public class AllocateInstruction extends BaseInstruction{
 
     @Override
     public String toString() {
-        StringBuilder res = new StringBuilder();
-        res.append(value1).append(" = alloca i32");
-        if(value1.type == Type.integer) return res.toString();
-        return "not implement";
+        return String.format("%s = alloca %s",value1.getName(),value1.getType());
     }
 }

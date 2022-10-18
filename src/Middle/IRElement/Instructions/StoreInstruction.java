@@ -10,6 +10,6 @@ public class StoreInstruction extends BaseInstruction {
 
     @Override
     public String toString() {
-        return "store i32 " + value1 + ", i32* " + value2;
+        return "store " + value1.getType() + " " + value1.getName() + ", " + value2.getDescriptor();
     }
 }

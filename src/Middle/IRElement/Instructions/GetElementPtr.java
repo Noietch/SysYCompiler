@@ -1,2 +1,5 @@
-package Middle.IRElement.Instructions;public class getelementptr {
+package Middle.IRElement.Instructions;
+
+public class GetElementPtr extends BaseInstruction{
+
 }
