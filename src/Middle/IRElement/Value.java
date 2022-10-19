@@ -1,9 +1,10 @@
 package Middle.IRElement;
 
-import Middle.IRElement.Type.DataType;
 import Middle.IRElement.Type.ValueType;
 import Utils.LinkedList;
 import Utils.LinkedListNode;
+
+import java.util.ArrayList;
 
 public class Value extends LinkedListNode {
     public String name;
@@ -11,8 +12,13 @@ public class Value extends LinkedListNode {
 
     public ValueType.Type type;
 
-    public Value() {
+    public boolean isGlobal = false;
+    public Value firstAddr;
+    public Value(){}
 
+    public Value(String name) {
+        this.name = name;
+        this.uses = new LinkedList<>();
     }
 
     public Value(String name, ValueType.Type type) {
@@ -21,19 +27,28 @@ public class Value extends LinkedListNode {
         this.uses = new LinkedList<>();
     }
 
-    public String getType(){
+    public void setType(ValueType.Type type) {
+        this.type = type;
+    }
+
+    public void setFirstAddr(Value firstAddr) {
+        this.firstAddr = firstAddr;
+    }
+
+    public ValueType.Type getType() {
         return this.type.getType();
     }
 
-    public String getName(){
+    public String getName() {
         return "%" + name;
     }
 
-    public String getDescriptor(){
-        return String.format("%s %s",this.type,getName());
+    public String getDescriptor() {
+        return String.format("%s %s", this.type, getName());
+    }
+
+    @Override
+    public String toString() {
+        return this.type.toString();
     }
 }
-
-
-
-

@@ -135,6 +135,7 @@ public class TokenHandler {
                 tempConstInitVal = constInitVal();
             } else throw new ParseError("[ConstDef Error] ASSIGN");
         } else throw new ParseError("[ConstDef Error] CONSTTK");
+
         return new ConstDef(ident, constExps, tempConstInitVal);
     }
 
@@ -151,8 +152,7 @@ public class TokenHandler {
                 syntaxNodes.add(constInitVal());
                 if (SymTypeIs("COMMA")) nextSym();
             }
-            if (syntaxNodes.size() == 1) initType = VarType.oneDimArray;
-            else initType = VarType.twoDimArray;
+            initType = VarType.Array;
         } else { // 普通变量
             syntaxNodes.add(constExp());
             initType = VarType.Var;
@@ -208,7 +208,7 @@ public class TokenHandler {
 
     private InitVal initVal() throws ParseError {
         ArrayList<SyntaxNode> syntaxNodes = new ArrayList<>();
-        VarType initType = null;
+        VarType initType;
 
         if (SymTypeIs("LBRACE")) { // 数组
             nextSym();
@@ -220,6 +220,7 @@ public class TokenHandler {
                     break;
                 }
             }
+            initType = VarType.Array;
         } else { // 普通变量
             syntaxNodes.add(exp());
             initType = VarType.Var;

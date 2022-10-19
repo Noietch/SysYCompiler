@@ -3,44 +3,43 @@ package Utils;
 import java.util.Iterator;
 
 public class LinkedList<T extends LinkedListNode> implements Iterable<T> {
-    public T head;
-    public T tail;
+    private final LinkedListNode head;
+    private final LinkedListNode tail;
     public int size;
 
-    @SuppressWarnings("unchecked")
     public LinkedList() {
-        head = (T) new LinkedListNode();
-        tail = (T) new LinkedListNode();
-        head.next = tail;
-        tail.prev = head;
+        head = new LinkedListNode();
+        tail = new LinkedListNode();
+        head.setNext(tail);
+        tail.setPrev(head);
         size = 0;
     }
 
     public void insertAfter(T prevNode, T newNode) {
-        newNode.next = prevNode.next;
-        newNode.prev = prevNode;
-        prevNode.next = newNode;
-        newNode.next.prev = newNode;
+        newNode.setNext(prevNode.getNext());
+        newNode.setPrev(prevNode);
+        prevNode.setNext(newNode);
+        newNode.getNext().setPrev(newNode);
         size++;
     }
 
     public void insertBefore(T nextNode, T newNode) {
-        newNode.prev = nextNode.prev;
-        newNode.next = nextNode;
-        nextNode.prev = newNode;
-        newNode.prev.next = newNode;
+        newNode.setPrev(nextNode.getPrev());
+        newNode.setNext(nextNode);
+        nextNode.setPrev(newNode);
+        newNode.getPrev().setNext(newNode);
         size++;
     }
 
     @SuppressWarnings("unchecked")
     public void append(T newNode) {
-        insertBefore(tail,newNode);
+        insertBefore((T) tail, newNode);
     }
 
 
     public void delete(T targetNode) {
-        targetNode.prev.next = targetNode.next;
-        targetNode.next.prev = targetNode.prev;
+        targetNode.getPrev().setNext(targetNode.getNext());
+        targetNode.getNext().setPrev(targetNode.getPrev());
         size--;
     }
 
@@ -50,23 +49,23 @@ public class LinkedList<T extends LinkedListNode> implements Iterable<T> {
     }
 
     class IIterator implements Iterator<T> {
-        T cur = head;
+        LinkedListNode cur = head;
 
         @Override
         public boolean hasNext() {
-            return cur.next != tail;
+            return cur.getNext() != tail;
         }
 
         @Override
         @SuppressWarnings("unchecked")
         public T next() {
-            cur = (T) cur.next;
-            return cur;
+            cur = cur.getNext();
+            return (T) cur;
         }
-
+        @SuppressWarnings("unchecked")
         @Override
         public void remove() {
-            delete(cur);
+            delete((T) cur);
         }
     }
 
@@ -87,9 +86,9 @@ public class LinkedList<T extends LinkedListNode> implements Iterable<T> {
         TestNode t4 = new TestNode(4);
         TestLinkedList.append(t1);
         TestLinkedList.append(t2);
-        TestLinkedList.insertAfter(t2,t3);
-        TestLinkedList.insertBefore(t3,t4);
-        for(TestNode testNode:TestLinkedList){
+        TestLinkedList.insertAfter(t2, t3);
+        TestLinkedList.insertBefore(t3, t4);
+        for (TestNode testNode : TestLinkedList) {
             System.out.println(testNode.value);
         }
     }

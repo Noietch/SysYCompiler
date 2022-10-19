@@ -4,15 +4,17 @@ import Middle.IRElement.Type.DataType;
 import Middle.IRElement.Type.ValueType;
 import Utils.LinkedList;
 
+import java.util.ArrayList;
+
 public class User extends Value{
-    LinkedList<Value> operandList;
+    ArrayList<Value> operandList;
     public User(String name, ValueType.Type valueType) {
         this.name = name;
         this.type = valueType;
-        operandList = new LinkedList<>();
+        operandList = new ArrayList<>();
     }
 
     public void addOperand(Value value){
-        operandList.append(value);
+        operandList.add(value);
     }
 }

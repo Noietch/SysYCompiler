@@ -6,8 +6,8 @@ import Middle.IRElement.Value;
 
 public class Constant extends Value {
 
-    public Constant(String name, ValueType.Type type){
-        this.type = type;
+    public Constant(String name){
+        this.type = ValueType.i32;
         this.name = name;
     }
 

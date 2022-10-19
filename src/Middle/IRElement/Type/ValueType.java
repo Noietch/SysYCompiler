@@ -1,11 +1,17 @@
 package Middle.IRElement.Type;
 
+import java.util.ArrayList;
+import java.util.Collections;
+
 public class ValueType {
+
+    public static Type i32 = new Type(DataType.i32);
+    public static Type i1 = new Type(DataType.i1);
+
     public static class Type {
         public DataType dataType;
 
         public Type() {
-
         }
 
         public Type(DataType dataType) {
@@ -17,8 +23,14 @@ public class ValueType {
             return dataType.toString();
         }
 
-        public String getType() {
-            return dataType.toString();
+        public Type getType() {
+            return this;
+        }
+
+        public ArrayList<Integer> getDim(){
+            if(this instanceof ValueType.ArrayType)
+                return this.getDim();
+            else throw new RuntimeException("[getDim] NOT ARRAY");
         }
     }
 
@@ -34,26 +46,45 @@ public class ValueType {
             return type + "*";
         }
 
-        public String getType() {
-            return type.getType();
+        public Type getType() {
+            return type;
         }
+
     }
 
     public static class ArrayType extends Type {
         Type type;
         int size;
 
-        public ArrayType(Type type) {
+        public ArrayType(int size, Type type) {
+            this.size = size;
             this.type = type;
         }
+
+        public int size(){
+            return size;
+        }
+
+        public ArrayList<Integer> getDim() {
+            Type temp = this;
+            ArrayList<Integer> res = new ArrayList<>();
+            while(temp instanceof ArrayType){
+                res.add(((ArrayType) temp).size);
+                temp = ((ArrayType) temp).type;
+            }
+            Collections.reverse(res);
+            return res;
+        }
+
 
         @Override
         public String toString() {
             return String.format("[%d x %s]", size, type);
         }
 
-        public String getType() {
-            return type.getType();
+        public Type getType() {
+            return type;
         }
+
     }
 }

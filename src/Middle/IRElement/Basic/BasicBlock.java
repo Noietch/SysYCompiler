@@ -7,6 +7,8 @@ import Utils.LinkedList;
 public class BasicBlock extends Value {
     public Function parent;
     public LinkedList<BaseInstruction> instructions;
+    private boolean isTerminate = false;
+    private BaseInstruction tail = null;
 
     public BasicBlock(String name, Function parent) {
         this.name = name;
@@ -20,7 +22,10 @@ public class BasicBlock extends Value {
     }
 
     public void appendInst(BaseInstruction instruction) {
-        instructions.append(instruction);
+        if (!isTerminate) {
+            instructions.append(instruction);
+            tail = instruction;
+        }
     }
 
     public void setVirtualNum(String num) {
@@ -31,7 +36,12 @@ public class BasicBlock extends Value {
         instructions.insertBefore(nextInst, newInst);
     }
 
-    public String getDescriptor(){
+    public void setTerminator(BaseInstruction newNode) {
+        instructions.append(newNode);
+        isTerminate = true;
+    }
+
+    public String getDescriptor() {
         return "label " + getName();
     }
 

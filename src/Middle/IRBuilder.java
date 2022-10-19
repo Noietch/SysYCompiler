@@ -7,12 +7,19 @@ import Middle.IRElement.Basic.Module;
 import Middle.IRElement.Instructions.*;
 import Middle.IRElement.Type.*;
 
+import java.util.ArrayList;
+import java.util.Collections;
+
 public class IRBuilder {
     public CompUnit syntaxTreeRoot; // 语法树根
     public ValueTable currentValueTable = new ValueTable(null);
     public BasicBlock currentBasicBlock = null;
+
+    public BasicBlock.LoopBlock currentLoop = null;
     public Module currentModule = new Module();
     public Function currentFunction = null;
+
+    public int currentPos = 0;
 
     public IRBuilder(CompUnit treeRoot) {
         this.syntaxTreeRoot = treeRoot;
@@ -86,76 +93,172 @@ public class IRBuilder {
         return visitAddExp(constExp.addExp);
     }
 
-    public Value visitConstInitVal(ConstInitVal constInitVal) {
-        if (constInitVal.initType == VarType.Var) {
-            return visitConstExp((ConstExp) constInitVal.syntaxNodes.get(0));
-        } else {
-            int size = constInitVal.syntaxNodes.size();
-//            for(SyntaxNode syntaxNode:constInitVal.syntaxNodes){
-//                return visitConstInitVal((ConstInitVal) syntaxNode);
-//            }
-            throw new RuntimeException("NOT IMPLEMENT");
-        }
-    }
 
     public void visitConstDef(ConstDef constDef) {
         if (currentValueTable.father != null) {
+            Value param = new Value();
             if (constDef.constExps.size() == 0) {
-                Value value = new Value(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+                param.setType(ValueType.i32);
+                Value pointer = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(param.type));
                 // 分配空间
-                AllocateInstruction allocateInstruction = new AllocateInstruction(value);
+                AllocateInstruction allocateInstruction = new AllocateInstruction(pointer, param);
                 currentBasicBlock.appendInst(allocateInstruction);
                 // 初值
-                Value initValValue = visitConstInitVal(constDef.constInitVal);
-                StoreInstruction storeInstruction = new StoreInstruction(initValValue, value);
-                currentBasicBlock.appendInst(storeInstruction);
+                visitConstInitVal(pointer, constDef.constInitVal, false);
                 // 记录符号
-                currentValueTable.addValue(constDef.ident.token.value, value);
+                currentValueTable.addValue(constDef.ident.token.value, pointer);
             } else {
-//                Value baseType = new Value(DataType.i32);
-//                String name = VirtualRegister.getRegister();
-//                ValueType.Array array = null;
-//                for(ConstExp constExp:constDef.constExps){
-//                    array = new ValueType.Array(name,constExp.eval(),baseType);
-//                    baseType = array;
-//                }
-//                assert array != null;
-////                 分配空间
-//                AllocateInstruction allocateInstruction = new AllocateInstruction(array);
-//                currentBasicBlock.appendInst(allocateInstruction);
+                // 构造数组类型
+                ValueType.Type baseType = ValueType.i32;
+                Collections.reverse(constDef.constExps);
+                for (ConstExp constExp : constDef.constExps) {
+                    int size = constExp.eval();
+                    baseType = new ValueType.ArrayType(size, baseType);
+                }
+                param.setType(baseType);
+                String name = VirtualRegister.getRegister();
+                Value arrayPointer = new Value(name, new ValueType.Pointer(param.type));
+                // 分配空间
+                AllocateInstruction allocateInstruction = new AllocateInstruction(arrayPointer, param);
+                currentBasicBlock.appendInst(allocateInstruction);
+                // 获取数组首地址指针
+                Value firstAddr = null;
+                Value temp = arrayPointer;
+                for (ConstExp ignored : constDef.constExps) {
+                    firstAddr = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(temp.getType().getType()));
+                    GetElementPtr getElementPtr = new GetElementPtr(firstAddr, temp, new Constant("0"), new Constant("0"));
+                    currentBasicBlock.appendInst(getElementPtr);
+                    temp = firstAddr;
+                }
                 // 初值
-
+                visitConstInitVal(firstAddr, constDef.constInitVal, true);
+                currentPos = 0;
+                // 记录符号
+                arrayPointer.setFirstAddr(firstAddr);
+                currentValueTable.addValue(constDef.ident.token.value, arrayPointer);
             }
         } else {
             GlobalVariable globalVariable = new GlobalVariable(constDef.ident.token.value, true, constDef.constInitVal, null);
-            currentModule.addGlobalVariable(globalVariable);
+            if (constDef.constExps.size() == 0) {
+                globalVariable.setType(ValueType.i32);
+                currentModule.addGlobalVariable(globalVariable);
+            } else {
+                // 构造数组类型
+                ValueType.Type baseType = ValueType.i32;
+                Collections.reverse(constDef.constExps);
+                for (ConstExp constExp : constDef.constExps) {
+                    int size = constExp.eval();
+                    baseType = new ValueType.ArrayType(size, baseType);
+                }
+                globalVariable.setType(new ValueType.Pointer(baseType));
+                currentModule.addGlobalVariable(globalVariable);
+            }
+            currentValueTable.addValue(constDef.ident.token.value, globalVariable);
         }
     }
 
-    public Value visitInitVal(InitVal initVal) {
-        if (initVal.initType == VarType.Var) {
-            return visitExp((Exp) initVal.syntaxNodes.get(0));
-        } else throw new RuntimeException("[visitInitVal]");
+
+
+    public void visitConstInitVal(Value pointer, ConstInitVal constInitVal, boolean isArray) {
+        Value res;
+        if (constInitVal.initType == VarType.Var) {
+            if (isArray && currentPos != 0) {
+                res = new Value(VirtualRegister.getRegister(), pointer.type);
+                GetElementPtr getElementPtr = new GetElementPtr(res, pointer, new Constant(Integer.toString(currentPos)));
+                currentBasicBlock.appendInst(getElementPtr);
+            } else res = pointer;
+            Value initValValue = visitConstExp((ConstExp) constInitVal.syntaxNodes.get(0));
+            StoreInstruction storeInstruction = new StoreInstruction(initValValue, res);
+            currentBasicBlock.appendInst(storeInstruction);
+            currentPos++;
+        } else {
+            for (SyntaxNode syntaxNode : constInitVal.syntaxNodes) {
+                ConstInitVal initVal = (ConstInitVal) syntaxNode;
+                visitConstInitVal(pointer, initVal, isArray);
+            }
+        }
     }
 
     public void visitVarDef(VarDef varDef) {
         if (currentValueTable.father != null) {
-            Value value = new Value(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
-//            if (varDef.constExps.size() == 0) value.setType(Value.Type.integer);
-//            else throw new RuntimeException("[visitVarDef] Array not implement");
-            AllocateInstruction allocateInstruction = new AllocateInstruction(value);
-            currentBasicBlock.appendInst(allocateInstruction);
-            // 初值
-            if (varDef.initVal != null) {
-                Value initValValue = visitInitVal(varDef.initVal);
-                StoreInstruction storeInstruction = new StoreInstruction(initValValue, value);
-                currentBasicBlock.appendInst(storeInstruction);
+            Value param = new Value();
+            if (varDef.constExps.size() == 0) {
+                param.setType(ValueType.i32);
+                Value value = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(param.type));
+                // 分配空间
+                AllocateInstruction allocateInstruction = new AllocateInstruction(value, param);
+                currentBasicBlock.appendInst(allocateInstruction);
+                // 初值
+                if (varDef.initVal != null) visitInitVal(value, varDef.initVal, false);
+                // 记录符号
+                currentValueTable.addValue(varDef.ident.token.value, value);
+            } else {
+                // 构造数组类型
+                ValueType.Type baseType = ValueType.i32;
+                Collections.reverse(varDef.constExps);
+                for (ConstExp constExp : varDef.constExps) {
+                    baseType = new ValueType.ArrayType(constExp.eval(), baseType);
+                }
+                param.setType(baseType);
+                String name = VirtualRegister.getRegister();
+                Value arrayPointer = new Value(name, new ValueType.Pointer(param.type));
+                // 分配空间
+                AllocateInstruction allocateInstruction = new AllocateInstruction(arrayPointer, param);
+                currentBasicBlock.appendInst(allocateInstruction);
+                // 获取数组首地址指针
+                Value firstAddr = null;
+                Value temp = arrayPointer;
+                for (ConstExp ignored : varDef.constExps) {
+                    firstAddr = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(temp.getType().getType()));
+                    GetElementPtr getElementPtr = new GetElementPtr(firstAddr, temp, new Constant("0"), new Constant("0"));
+                    currentBasicBlock.appendInst(getElementPtr);
+                    temp = firstAddr;
+                }
+                if (varDef.initVal != null) {
+                    // 初值
+                    visitInitVal(firstAddr, varDef.initVal, true);
+                    currentPos = 0;
+                }
+                // 记录符号
+                arrayPointer.setFirstAddr(firstAddr);
+                currentValueTable.addValue(varDef.ident.token.value, arrayPointer);
             }
-            // 记录符号
-            currentValueTable.addValue(varDef.ident.token.value, value);
         } else {
             GlobalVariable globalVariable = new GlobalVariable(varDef.ident.token.value, false, null, varDef.initVal);
-            currentModule.addGlobalVariable(globalVariable);
+            if (varDef.constExps.size() == 0) {
+                globalVariable.setType(ValueType.i32);
+                currentModule.addGlobalVariable(globalVariable);
+            } else {
+                // 构造数组类型
+                ValueType.Type baseType = ValueType.i32;
+                Collections.reverse(varDef.constExps);
+                for (ConstExp constExp : varDef.constExps) {
+                    int size = constExp.eval();
+                    baseType = new ValueType.ArrayType(size, baseType);
+                }
+                globalVariable.setType(new ValueType.Pointer(baseType));
+                currentModule.addGlobalVariable(globalVariable);
+            }
+            currentValueTable.addValue(varDef.ident.token.value, globalVariable);
+        }
+    }
+
+    public void visitInitVal(Value pointer, InitVal initVal, Boolean isArray) {
+        if (initVal.initType == VarType.Var) {
+            Value res;
+            if (isArray && currentPos != 0) {
+                res = new Value(VirtualRegister.getRegister(), pointer.type);
+                GetElementPtr getElementPtr = new GetElementPtr(res, pointer, new Constant(Integer.toString(currentPos)));
+                currentBasicBlock.appendInst(getElementPtr);
+            } else res = pointer;
+            Value initValValue = visitExp((Exp) initVal.syntaxNodes.get(0));
+            StoreInstruction storeInstruction = new StoreInstruction(initValValue, res);
+            currentBasicBlock.appendInst(storeInstruction);
+            currentPos++;
+        } else {
+            for (SyntaxNode syntaxNode : initVal.syntaxNodes) {
+                visitInitVal(pointer, (InitVal) syntaxNode, isArray);
+            }
         }
     }
 
@@ -163,21 +266,20 @@ public class IRBuilder {
         return visitAddExp(exp.addExp);
     }
 
-
     public Value visitUnaryExp(UnaryExp unaryExp) {
         if (unaryExp.primaryExp != null) return visitPrimaryExp(unaryExp.primaryExp);
         else if (unaryExp.ident != null) {
             Function function = (Function) currentValueTable.getRegister("@" + unaryExp.ident.token.value);
-            User user = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+            User user = new User(VirtualRegister.getRegister(), ValueType.i32);
             CallInstruction callInstruction = new CallInstruction(function, user);
             currentBasicBlock.appendInst(callInstruction);
             return user;
         } else {
             if (unaryExp.unaryOp.opType == UnaryOp.Type.MINUS) {
-                Value value1 = new Constant("0", new ValueType.Type(DataType.i32));
+                Value value1 = new Constant("0");
                 Value value2 = visitUnaryExp(unaryExp.unaryExp);
                 Op op = new Op(Op.Type.sub);
-                User res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+                User res = new User(VirtualRegister.getRegister(), ValueType.i32);
                 currentBasicBlock.appendInst(new BinaryInstruction(res, value1, value2, op));
                 return res;
             } else if (unaryExp.unaryOp.opType == UnaryOp.Type.PLUS) {
@@ -189,18 +291,42 @@ public class IRBuilder {
     public Value visitPrimaryExp(PrimaryExp primaryExp) {
         if (primaryExp.exp != null) return visitExp(primaryExp.exp);
         else if (primaryExp.lVal != null) {
-            User res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
-            Value value = currentValueTable.getRegister(primaryExp.lVal.ident.token.value);
+            Value value = visitLVal(primaryExp.lVal);
+            User res = new User(VirtualRegister.getRegister(), ValueType.i32);
             LoadInstruction loadInstruction = new LoadInstruction(res, value);
             currentBasicBlock.appendInst(loadInstruction);
             return res;
-        } else return new Constant(primaryExp.getNumber(), new ValueType.Type(DataType.i32));
+        } else return new Constant(primaryExp.getNumber());
     }
 
     public Value visitLVal(LVal lVal) {
         if (lVal.type == VarType.Var) {
             return currentValueTable.getRegister(lVal.ident.token.value);
-        } else throw new RuntimeException();
+        } else {
+            User pos;
+            Value array = currentValueTable.getRegister(lVal.ident.token.value);
+            // 一维数组
+            if (lVal.exps.size() == 1) {
+                Value v1 = visitExp(lVal.exps.get(0));
+                Constant v2 = new Constant("0");
+                pos = new User(VirtualRegister.getRegister(), v2.getType());
+                currentBasicBlock.appendInst(new BinaryInstruction(pos, v1, v2, new Op(Op.Type.add)));
+            } else {
+                // 二维数组
+                ArrayList<Integer> dim = array.getType().getDim();
+                Value v1 = visitExp(lVal.exps.get(0));
+                Constant v2 = new Constant(Integer.toString(dim.get(1)));
+                User result = new User(VirtualRegister.getRegister(), v2.getType());
+                currentBasicBlock.appendInst(new BinaryInstruction(result, v1, v2, new Op(Op.Type.mul)));
+
+                v1 = visitExp(lVal.exps.get(1));
+                pos = new User(VirtualRegister.getRegister(), v2.getType());
+                currentBasicBlock.appendInst(new BinaryInstruction(pos, v1, result, new Op(Op.Type.add)));
+            }
+            Value res = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(pos.getType()));
+            currentBasicBlock.appendInst(new GetElementPtr(res, array.firstAddr, pos));
+            return res;
+        }
     }
 
     public void visitBlockItem(BlockItem blockItem) {
@@ -229,10 +355,10 @@ public class IRBuilder {
     }
 
     public void visitReturn(Stmt stmt) {
-        if (stmt.exps.size() == 0)
-            currentBasicBlock.appendInst(new RetInstruction(null));
-        else {
-            currentBasicBlock.appendInst(new RetInstruction(visitExp(stmt.exps.get(0))));
+        if (stmt.exps.size() == 0) {
+            currentBasicBlock.setTerminator(new RetInstruction(null));
+        } else {
+            currentBasicBlock.setTerminator(new RetInstruction(visitExp(stmt.exps.get(0))));
         }
     }
 
@@ -260,27 +386,22 @@ public class IRBuilder {
             currentBasicBlock.appendInst(out2);
             outBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
             out2.setLabelTrue(outBlock);
-        } else outBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
-        branchInstruction.setLabelFalse(outBlock);
+            branchInstruction.setLabelFalse(elseBlock);
+        } else {
+            outBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
+            branchInstruction.setLabelFalse(outBlock);
+        }
         out.setLabelTrue(outBlock);
         currentBasicBlock = outBlock;
         currentFunction.addBasicBlock(outBlock);
     }
 
     public void visitBreak() {
-        BasicBlock.LoopBlock temp = (BasicBlock.LoopBlock) currentBasicBlock;
-        temp.appendInst(new BranchInstruction(temp.falseBranch));
-        BasicBlock newBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
-        currentBasicBlock = newBlock;
-        currentFunction.addBasicBlock(newBlock);
+        currentBasicBlock.setTerminator(new BranchInstruction(currentLoop.falseBranch));
     }
 
     public void visitContinue() {
-        BasicBlock.LoopBlock temp = (BasicBlock.LoopBlock) currentBasicBlock;
-        temp.appendInst(new BranchInstruction(temp.judgeBranch));
-        BasicBlock newBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
-        currentBasicBlock = newBlock;
-        currentFunction.addBasicBlock(newBlock);
+        currentBasicBlock.setTerminator(new BranchInstruction(currentLoop.judgeBranch));
     }
 
     public void visitLoop(Stmt stmt) {
@@ -301,6 +422,7 @@ public class IRBuilder {
         currentBasicBlock.appendInst(branchInstruction);
         // 新建ture基本块,回填判断块中的分支指令
         BasicBlock.LoopBlock ifBlock = new BasicBlock.LoopBlock(VirtualRegister.getRegister(), currentFunction);
+        currentLoop = ifBlock;
         currentFunction.addBasicBlock(ifBlock);
         ifBlock.setJudgeBranch(judgeBlock);
         ifBlock.setFalseBranch(outBlock);
@@ -336,13 +458,13 @@ public class IRBuilder {
             Value value1 = visitUnaryExp(mulExp.unaryExps.get(0));
             Value value2 = visitUnaryExp(mulExp.unaryExps.get(1));
             Op op = new Op(Op.Op2Type(mulExp.unaryOps.get(0).token));
-            User res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+            User res = new User(VirtualRegister.getRegister(), ValueType.i32);
             currentBasicBlock.appendInst(new BinaryInstruction(res, value1, value2, op));
             for (int i = 2; i < mulExp.unaryExps.size(); i++) {
                 value1 = res;
                 value2 = visitUnaryExp(mulExp.unaryExps.get(i));
                 op = new Op(Op.Op2Type(mulExp.unaryOps.get(i - 1).token));
-                res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+                res = new User(VirtualRegister.getRegister(), ValueType.i32);
                 currentBasicBlock.appendInst(new BinaryInstruction(res, value1, value2, op));
             }
             return res;
@@ -355,13 +477,13 @@ public class IRBuilder {
             Value value1 = visitMulExp(addExp.mulExps.get(0));
             Value value2 = visitMulExp(addExp.mulExps.get(1));
             Op op = new Op(Op.Op2Type(addExp.unaryOps.get(0).token));
-            User res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+            User res = new User(VirtualRegister.getRegister(), ValueType.i32);
             currentBasicBlock.appendInst(new BinaryInstruction(res, value1, value2, op));
             for (int i = 2; i < addExp.mulExps.size(); i++) {
                 value1 = res;
                 value2 = visitMulExp(addExp.mulExps.get(i));
                 op = new Op(Op.Op2Type(addExp.unaryOps.get(i - 1).token));
-                res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+                res = new User(VirtualRegister.getRegister(), ValueType.i32);
                 currentBasicBlock.appendInst(new BinaryInstruction(res, value1, value2, op));
             }
             return res;
@@ -375,13 +497,13 @@ public class IRBuilder {
             Value value1 = visitAddExp(relExp.addExps.get(0));
             Value value2 = visitAddExp(relExp.addExps.get(1));
             Op op = new Op(Op.Op2Type(relExp.unaryOps.get(0).token));
-            User res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+            User res = new User(VirtualRegister.getRegister(), ValueType.i32);
             currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             for (int i = 2; i < relExp.addExps.size(); i++) {
                 value1 = res;
                 value2 = visitAddExp(relExp.addExps.get(i));
                 op = new Op(Op.Op2Type(relExp.unaryOps.get(i - 1).token));
-                res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+                res = new User(VirtualRegister.getRegister(), ValueType.i32);
                 currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             }
             return res;
@@ -394,13 +516,13 @@ public class IRBuilder {
             Value value1 = visitRelExp(eqExp.relExps.get(0));
             Value value2 = visitRelExp(eqExp.relExps.get(1));
             Op op = new Op(Op.Op2Type(eqExp.unaryOps.get(0).token));
-            User res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+            User res = new User(VirtualRegister.getRegister(), ValueType.i32);
             currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             for (int i = 2; i < eqExp.relExps.size(); i++) {
                 value1 = res;
                 value2 = visitRelExp(eqExp.relExps.get(i));
                 op = new Op(Op.Op2Type(eqExp.unaryOps.get(i - 1).token));
-                res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+                res = new User(VirtualRegister.getRegister(), ValueType.i32);
                 currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             }
             return res;
@@ -413,13 +535,13 @@ public class IRBuilder {
             Value value1 = visitEqExp(lAndExp.eqExps.get(0));
             Value value2 = visitEqExp(lAndExp.eqExps.get(1));
             Op op = new Op(Op.Op2Type(lAndExp.unaryOps.get(0).token));
-            User res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+            User res = new User(VirtualRegister.getRegister(), ValueType.i32);
             currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             for (int i = 2; i < lAndExp.eqExps.size(); i++) {
                 value1 = res;
                 value2 = visitEqExp(lAndExp.eqExps.get(i));
                 op = new Op(Op.Op2Type(lAndExp.unaryOps.get(i - 1).token));
-                res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+                res = new User(VirtualRegister.getRegister(), ValueType.i32);
                 currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             }
             return res;
@@ -432,13 +554,13 @@ public class IRBuilder {
             Value value1 = visitLAndExp(lOrExp.lAndExps.get(0));
             Value value2 = visitLAndExp(lOrExp.lAndExps.get(1));
             Op op = new Op(Op.Op2Type(lOrExp.unaryOps.get(0).token));
-            User res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+            User res = new User(VirtualRegister.getRegister(), ValueType.i32);
             currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             for (int i = 2; i < lOrExp.lAndExps.size(); i++) {
                 value1 = res;
                 value2 = visitLAndExp(lOrExp.lAndExps.get(i));
                 op = new Op(Op.Op2Type(lOrExp.unaryOps.get(i - 1).token));
-                res = new User(VirtualRegister.getRegister(), new ValueType.Type(DataType.i32));
+                res = new User(VirtualRegister.getRegister(), ValueType.i32);
                 currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             }
             return res;

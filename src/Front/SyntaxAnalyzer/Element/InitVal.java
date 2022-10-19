@@ -2,7 +2,7 @@ package Front.SyntaxAnalyzer.Element;
 
 import java.util.ArrayList;
 
-public class InitVal extends SyntaxNode{
+public class InitVal extends SyntaxNode {
     public ArrayList<SyntaxNode> syntaxNodes;
     public VarType initType;
 

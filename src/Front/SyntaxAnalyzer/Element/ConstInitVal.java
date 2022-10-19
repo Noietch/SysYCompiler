@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 public class ConstInitVal extends SyntaxNode {
     public final ArrayList<SyntaxNode> syntaxNodes;
-    public final VarType initType;
+    public VarType initType;
 
     public ConstInitVal(ArrayList<SyntaxNode> syntaxNodes, VarType initType) {
         this.syntaxNodes = syntaxNodes;
