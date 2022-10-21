@@ -18,7 +18,6 @@ public class IRBuilder {
     public BasicBlock.LoopBlock currentLoop = null;
     public Module currentModule = new Module();
     public Function currentFunction = null;
-
     public int currentPos = 0;
 
     public IRBuilder(CompUnit treeRoot) {
@@ -31,7 +30,6 @@ public class IRBuilder {
     }
 
     public String getIR() {
-
         buildIR();
         return currentModule.toString();
     }
@@ -187,8 +185,8 @@ public class IRBuilder {
                     temp = firstAddr;
                 }
                 // 初值
-                visitConstInitVal(firstAddr, constDef.constInitVal, true);
                 currentPos = 0;
+                visitConstInitVal(firstAddr, constDef.constInitVal, true);
                 // 记录符号
                 currentValueTable.addValue(constDef.ident.token.value, arrayPointer);
             }
@@ -288,8 +286,8 @@ public class IRBuilder {
                 }
                 if (varDef.initVal != null) {
                     // 初值
-                    visitInitVal(firstAddr, varDef.initVal, true);
                     currentPos = 0;
+                    visitInitVal(firstAddr, varDef.initVal, true);
                 }
                 // 记录符号
                 currentValueTable.addValue(varDef.ident.token.value, arrayPointer);
@@ -361,7 +359,8 @@ public class IRBuilder {
                 for (Exp exp : unaryExp.funcRParams.exps)
                     callInstruction.addParam(visitExp(exp));
             }
-            user.setName(VirtualRegister.getRegister());
+            if (function.returnType == DataType.Void) callInstruction.setRes(null);
+            else user.setName(VirtualRegister.getRegister());
             currentBasicBlock.appendInst(callInstruction);
             return user;
         } else {
@@ -386,69 +385,45 @@ public class IRBuilder {
     public Value visitPrimaryExp(PrimaryExp primaryExp) {
         if (primaryExp.exp != null) return visitExp(primaryExp.exp);
         else if (primaryExp.lVal != null) {
-            Value value = visitLVal(primaryExp.lVal);
-            // 保证如果是常量，则直接返回
-            if (value.getType() instanceof ValueType.Pointer) {
-                User res = new User(VirtualRegister.getRegister(), ValueType.i32);
-                LoadInstruction loadInstruction = new LoadInstruction(res, value);
-                currentBasicBlock.appendInst(loadInstruction);
-                return res;
-            } else return value;
+            return visitLVal(primaryExp.lVal);
         } else return new Constant(primaryExp.getNumber());
     }
 
     public Value visitLVal(LVal lVal) {
-        if (lVal.type == VarType.Var) {
-            return currentValueTable.getRegister(lVal.ident.token.value);
+        Value value = currentValueTable.getRegister(lVal.getName());
+        if (value.getInnerType() == ValueType.i32) {
+            return value;
         } else {
-            User pos;
-            Value array = currentValueTable.getRegister(lVal.ident.token.value);
-            // 一维数组
-            if (lVal.exps.size() == 1) {
-                Value v1 = visitExp(lVal.exps.get(0));
-                Constant v2 = new Constant("0");
-                pos = new User(VirtualRegister.getRegister(), v2.getInnerType());
-                currentBasicBlock.appendInst(new BinaryInstruction(pos, v1, v2, new Op(Op.Type.add)));
-            } else {
-                // 二维数组
-                int secondDim;
-                if (array.getInnerType() instanceof ValueType.ArrayType)
-                    secondDim = array.getInnerType().getDim().get(1);
-                else secondDim = array.getInnerType().getType().getDim().get(0);
-                Value v1 = visitExp(lVal.exps.get(0));
-                Constant v2 = new Constant(Integer.toString(secondDim));
-                User result = new User(VirtualRegister.getRegister(), v2.getInnerType());
-                currentBasicBlock.appendInst(new BinaryInstruction(result, v1, v2, new Op(Op.Type.mul)));
-                v1 = visitExp(lVal.exps.get(1));
-                pos = new User(VirtualRegister.getRegister(), v2.getInnerType());
-                currentBasicBlock.appendInst(new BinaryInstruction(pos, v1, result, new Op(Op.Type.add)));
-            }
-            // 加载数组首地址指针
-            Value firstAddr = null;
-            Value temp = currentValueTable.getRegister(lVal.getName());
-            ValueType.Type lValType = temp.getInnerType();
+            Value firstAddr = value;
+            ValueType.Type lValType = value.getInnerType();
             if (lValType instanceof ValueType.Pointer) {
-                firstAddr = new User(VirtualRegister.getRegister(), new ValueType.Pointer(temp.getInnerType().getType()));
-                LoadInstruction loadFirst = new LoadInstruction((User) firstAddr, temp);
+                firstAddr = new User(VirtualRegister.getRegister(), value.getInnerType());
+                LoadInstruction loadFirst = new LoadInstruction((User) firstAddr, value);
                 currentBasicBlock.appendInst(loadFirst);
-                if (firstAddr.getInnerType() instanceof ValueType.ArrayType) {
-                    temp = firstAddr;
-                    firstAddr = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(firstAddr.getInnerType().getType().getType()));
-                    GetElementPtr getElementPtr = new GetElementPtr(firstAddr, temp, new Constant("0"), new Constant("0"));
+                if (lVal.exps.size() > 0) {
+                    Value biasRes = new User(null, new ValueType.Pointer(value.getInnerType().getType()));
+                    GetElementPtr getElementPtr = new GetElementPtr(biasRes, firstAddr, visitExp(lVal.exps.get(0)));
+                    biasRes.setName(VirtualRegister.getRegister());
                     currentBasicBlock.appendInst(getElementPtr);
+                    firstAddr = biasRes;
+                    // 二维数组
+                    if (firstAddr.getInnerType() instanceof ValueType.ArrayType) {
+                        value = firstAddr;
+                        firstAddr = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(firstAddr.getInnerType().getType().getType()));
+                        getElementPtr = new GetElementPtr(firstAddr, value, new Constant("0"), visitExp(lVal.exps.get(1)));
+                        currentBasicBlock.appendInst(getElementPtr);
+                    }
                 }
             } else {
                 for (int i = 0; i < lVal.exps.size(); i++) {
-                    firstAddr = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(temp.getInnerType().getType()));
-                    GetElementPtr getElementPtr = new GetElementPtr(firstAddr, temp, new Constant("0"), new Constant("0"));
+                    firstAddr = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(value.getInnerType().getType()));
+                    Value bias = visitExp(lVal.exps.get(i));
+                    GetElementPtr getElementPtr = new GetElementPtr(firstAddr, value, new Constant("0"), bias);
                     currentBasicBlock.appendInst(getElementPtr);
-                    temp = firstAddr;
+                    value = firstAddr;
                 }
             }
-            // 首地址指针偏移
-            Value res = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(pos.getInnerType()));
-            currentBasicBlock.appendInst(new GetElementPtr(res, firstAddr, pos));
-            return res;
+            return firstAddr;
         }
     }
 
@@ -471,11 +446,16 @@ public class IRBuilder {
         else if (stmt.getType() == Stmt.Type.Break) visitBreak();
         else if (stmt.getType() == Stmt.Type.Continue) visitContinue();
         else if (stmt.getType() == Stmt.Type.Print) visitPrint(stmt);
+        else if (stmt.getType() == Stmt.Type.Expression) visitExpression(stmt);
         else if (stmt.getType() == Stmt.Type.Block) {
             currentValueTable = currentValueTable.newSon();
             visitBlock(stmt.block);
             currentValueTable = currentValueTable.back();
         }
+    }
+
+    public void visitExpression(Stmt stmt) {
+        if (stmt.exps.size() > 0) visitExp(stmt.exps.get(0));
     }
 
     public void visitPrint(Stmt stmt) {
@@ -520,14 +500,14 @@ public class IRBuilder {
         BasicBlock outBlock = new BasicBlock(null, currentFunction);
         BasicBlock elseBlock = null;
         if (stmt.type == Stmt.Type.Branch_ELSE) elseBlock = new BasicBlock(null, currentFunction);
-        visitCond(stmt.cond, ifBlock, outBlock, elseBlock);
+        visitCond(stmt.cond, ifBlock, elseBlock, outBlock);
 
         ifBlock.setVirtualNum(VirtualRegister.getRegister());
         currentFunction.addBasicBlock(ifBlock);
         // 进入条件正确执行体
         currentBasicBlock = ifBlock;
         visitStmt(stmt.stmts.get(0));
-        BranchInstruction out = new BranchInstruction(null);
+        BranchInstruction out = new BranchInstruction(outBlock);
         currentBasicBlock.appendInst(out);
         // 进入条件错误执行体
         if (stmt.type == Stmt.Type.Branch_ELSE) {
@@ -541,7 +521,6 @@ public class IRBuilder {
             outBlock.setVirtualNum(VirtualRegister.getRegister());
             out2.setLabelTrue(outBlock);
         } else outBlock.setVirtualNum(VirtualRegister.getRegister());
-        out.setLabelTrue(outBlock);
         currentBasicBlock = outBlock;
         currentFunction.addBasicBlock(outBlock);
     }
@@ -705,7 +684,7 @@ public class IRBuilder {
     }
 
     public Value visitLAndExp(LAndExp lAndExp, BasicBlock ifBlock, BasicBlock elseBlock, BasicBlock outBlock) {
-        if(lAndExp.eqExps.size() == 1) return visitEqExp(lAndExp.eqExps.get(0));
+        if (lAndExp.eqExps.size() == 1) return visitEqExp(lAndExp.eqExps.get(0));
         Value value = null;
         for (int i = 0; i < lAndExp.eqExps.size(); i++) {
             value = visitEqExp(lAndExp.eqExps.get(i));
@@ -726,8 +705,8 @@ public class IRBuilder {
                 trueBlock = judge;
                 currentFunction.addBasicBlock(judge);
             }
-            if (elseBlock == null) currentBasicBlock.appendInst(new BranchInstruction(value, trueBlock, outBlock));
-            else currentBasicBlock.appendInst(new BranchInstruction(value, trueBlock, elseBlock));
+            if (elseBlock == null) currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, outBlock));
+            else currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, elseBlock));
             currentBasicBlock = trueBlock;
         }
         return value;
@@ -754,7 +733,8 @@ public class IRBuilder {
                 falseBlock = judge;
                 currentFunction.addBasicBlock(judge);
             }
-            currentBasicBlock.appendInst(new BranchInstruction(value, ifBlock, falseBlock));
+            if (!(i == lOrExp.lAndExps.size() - 1 && lOrExp.lAndExps.get(i).eqExps.size() > 1))
+                currentBasicBlock.setTerminator(new BranchInstruction(value, ifBlock, falseBlock));
             currentBasicBlock = falseBlock;
         }
     }

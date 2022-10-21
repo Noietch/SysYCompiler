@@ -8,7 +8,6 @@ public class BasicBlock extends Value {
     public Function parent;
     public LinkedList<BaseInstruction> instructions;
     private boolean isTerminate = false;
-    private BaseInstruction tail = null;
 
     public BasicBlock(String name, Function parent) {
         this.name = name;
@@ -24,7 +23,6 @@ public class BasicBlock extends Value {
     public void appendInst(BaseInstruction instruction) {
         if (!isTerminate) {
             instructions.append(instruction);
-            tail = instruction;
         }
     }
 
@@ -52,7 +50,7 @@ public class BasicBlock extends Value {
     @Override
     public String toString() {
         StringBuilder res = new StringBuilder();
-        res.append(name).append(":\n");
+        res.append(";<label>:").append(name).append(":\n");
         for (BaseInstruction instruction : instructions) {
             res.append("    ").append(instruction).append("\n");
         }

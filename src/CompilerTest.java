@@ -1,17 +1,14 @@
 import Front.LexicalAnalyzer.Parser;
-import Front.SyntaxAnalyzer.ErrorHandler;
 import Front.SyntaxAnalyzer.TokenHandler;
 import Middle.IRBuilder;
 import Utils.FileUtils;
-
-import java.io.IOException;
 
 public class CompilerTest {
     public static void main(String[] args) {
         for (int i = 1; i <= 30; i++) {
             try {
                 System.out.println("file: " + i);
-                String src = FileUtils.readFile("test/2022/C/testfile" + i + ".txt");
+                String src = FileUtils.readFile("test/2022/A/testfile" + i + ".txt");
                 Parser p = new Parser(src);
                 p.getSymbol();
                 TokenHandler tokenHandler = new TokenHandler(p.getTokenArrayList());

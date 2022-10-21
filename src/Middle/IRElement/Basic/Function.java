@@ -74,10 +74,10 @@ public class Function extends Value {
 
     public String define() {
         StringBuilder res = new StringBuilder();
-        res.append("define dso_local ").append(returnType).append(" ").append(this.getName());
+        res.append("define ").append(returnType).append(" ").append(this.getName());
         res.append("(");
         for (int i = 0; i < funcFParams.size(); i++) {
-            res.append(funcFParams.get(i).getDescriptor());
+            res.append(funcFParams.get(i).getType());
             if (i != funcFParams.size() - 1) res.append(", ");
         }
         res.append("){\n");

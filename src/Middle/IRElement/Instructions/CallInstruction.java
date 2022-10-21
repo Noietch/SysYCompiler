@@ -19,6 +19,11 @@ public class CallInstruction extends BaseInstruction {
         funcRParams.add(value);
     }
 
+
+    public void setRes(Value res) {
+        this.value2 = res;
+    }
+
     @Override
     public String toString() {
         Function function = (Function) this.value1;

@@ -37,6 +37,6 @@ public class ValueTable {
                 return cur.valueHashMap.get(name);
             cur = cur.father;
         }
-        throw new RuntimeException("Value Not Found");
+        throw new RuntimeException(String.format("%s NOT FOUND", name));
     }
 }

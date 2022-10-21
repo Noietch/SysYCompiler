@@ -1,6 +1,5 @@
 package Middle.IRElement.Basic;
 
-import Front.SyntaxAnalyzer.Element.*;
 import Middle.IRElement.Type.ValueType;
 import Middle.IRElement.Value;
 
@@ -9,7 +8,6 @@ import java.util.ArrayList;
 public class GlobalVariable extends Value {
     public boolean isConst;
     public ArrayList<Object> init;
-    public InitVal initVal;
 
     public GlobalVariable(String name, boolean isConst, ArrayList<Object> init) {
         this.name = name;
@@ -53,7 +51,7 @@ public class GlobalVariable extends Value {
                 return res.toString();
             }
         } else {
-            if (initVal == null) {
+            if (init == null) {
                 if (type.getType() == ValueType.i32)
                     return String.format("@%s = dso_local global %s %s", name, type.getType(), "0");
                 else {
