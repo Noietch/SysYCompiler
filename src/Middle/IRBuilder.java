@@ -756,6 +756,7 @@ public class IRBuilder {
         if (value.getType() == ValueType.i32) {
             User res = new User(VirtualRegister.getRegister(), ValueType.i1);
             currentBasicBlock.appendInst(new IcmpInstruction(res, value, new Constant("0"), new Op(Op.Type.ne)));
+            return res;
         }
         return value;
     }
