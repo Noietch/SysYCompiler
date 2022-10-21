@@ -1,8 +1,6 @@
 package Middle.IRElement;
 
-import Middle.IRElement.Type.DataType;
 import Middle.IRElement.Type.ValueType;
-import Utils.LinkedList;
 
 import java.util.ArrayList;
 
@@ -13,7 +11,6 @@ public class User extends Value{
         this.type = valueType;
         operandList = new ArrayList<>();
     }
-
     public void addOperand(Value value){
         operandList.add(value);
     }

@@ -63,13 +63,4 @@ public class UnaryExp extends SyntaxNode {
         else if (ident != null) return symbolTable.getType(ident);
         else return unaryExp.getType(symbolTable);
     }
-
-    public int eval(){
-        if(primaryExp != null) return primaryExp.eval();
-        else if(ident != null) throw new RuntimeException("func can not eval");
-        else {
-            if(unaryOp.opType == UnaryOp.Type.PLUS) return unaryExp.eval();
-            else return - unaryExp.eval();
-        }
-    }
 }

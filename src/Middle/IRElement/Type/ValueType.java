@@ -1,7 +1,6 @@
 package Middle.IRElement.Type;
 
 import java.util.ArrayList;
-import java.util.Collections;
 
 public class ValueType {
 
@@ -72,7 +71,6 @@ public class ValueType {
                 res.add(((ArrayType) temp).size);
                 temp = ((ArrayType) temp).type;
             }
-            Collections.reverse(res);
             return res;
         }
 

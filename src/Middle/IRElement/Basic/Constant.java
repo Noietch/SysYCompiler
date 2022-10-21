@@ -1,17 +1,20 @@
 package Middle.IRElement.Basic;
 
-import Middle.IRElement.Type.DataType;
 import Middle.IRElement.Type.ValueType;
 import Middle.IRElement.Value;
 
 public class Constant extends Value {
 
-    public Constant(String name){
+    public Constant(String name) {
         this.type = ValueType.i32;
         this.name = name;
     }
 
-    public String getName(){
+    public int getValue() {
+        return Integer.parseInt(name);
+    }
+
+    public String getName() {
         return this.name;
     }
 

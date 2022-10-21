@@ -17,6 +17,6 @@ public class IcmpInstruction extends BaseInstruction {
 
     @Override
     public String toString() {
-        return this.result.getName() + " = icmp " + op + " " + value1.getType() + " " + value1.getName() + ", " + value2.getName();
+        return this.result.getName() + " = icmp " + op + " " + value1.getInnerType() + " " + value1.getName() + ", " + value2.getName();
     }
 }

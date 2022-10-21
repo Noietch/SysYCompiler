@@ -29,7 +29,7 @@ public class BranchInstruction extends BaseInstruction {
         BasicBlock B1 = (BasicBlock) value1;
         if (cond != null) {
             BasicBlock B2 = (BasicBlock) value2;
-            return "br i1 " + cond.getName() + ", " + B1.getDescriptor() + ", " + B2.getDescriptor();
+            return "br " + cond.getType() + " " + cond.getName() + ", " + B1.getDescriptor() + ", " + B2.getDescriptor();
         } else {
             return "br " + B1.getDescriptor();
         }

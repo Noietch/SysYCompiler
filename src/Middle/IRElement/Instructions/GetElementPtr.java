@@ -1,7 +1,5 @@
 package Middle.IRElement.Instructions;
 
-import Middle.IRElement.Basic.Constant;
-import Middle.IRElement.User;
 import Middle.IRElement.Value;
 
 public class GetElementPtr extends BaseInstruction {
@@ -23,8 +21,8 @@ public class GetElementPtr extends BaseInstruction {
     @Override
     public String toString() {
         if(bound2 != null)
-            return String.format("%s = getelementptr %s, %s, %s, %s", value1.getName(), value2.getType(), value2.getDescriptor(), bound1.getDescriptor(), bound2.getDescriptor());
+            return String.format("%s = getelementptr %s, %s, %s, %s", value1.getName(), value2.getInnerType(), value2.getDescriptor(), bound1.getDescriptor(), bound2.getDescriptor());
         else
-            return String.format("%s = getelementptr %s, %s, %s", value1.getName(), value2.getType(), value2.getDescriptor(), bound1.getDescriptor());
+            return String.format("%s = getelementptr %s, %s, %s", value1.getName(), value2.getInnerType(), value2.getDescriptor(), bound1.getDescriptor());
     }
 }

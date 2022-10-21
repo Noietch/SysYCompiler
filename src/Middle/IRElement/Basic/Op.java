@@ -16,6 +16,7 @@ public class Op {
         ne,
         and,
         or,
+        srem,
         Error
     }
 
@@ -38,6 +39,7 @@ public class Op {
         if (token.value.equals("!=")) return Type.ne;
         if (token.value.equals("&&")) return Type.and;
         if (token.value.equals("||")) return Type.or;
+        if (token.value.equals("%")) return Type.srem;
         return Type.Error;
     }
 

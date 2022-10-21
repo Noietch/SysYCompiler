@@ -31,14 +31,4 @@ public class MulExp extends SyntaxNode{
     public Symbol.Type getType(SymbolTable symbolTable) {
         return unaryExps.get(0).getType(symbolTable);
     }
-
-    public int eval(){
-        int res = unaryExps.get(0).eval();
-        for(int i=1;i<unaryExps.size();i++){
-            if(unaryOps.get(i-1).token.value.equals("*")) res *= unaryExps.get(i).eval();
-            if(unaryOps.get(i-1).token.value.equals("/")) res /= unaryExps.get(i).eval();
-            if(unaryOps.get(i-1).token.value.equals("%")) res %= unaryExps.get(i).eval();
-        }
-        return res;
-    }
 }

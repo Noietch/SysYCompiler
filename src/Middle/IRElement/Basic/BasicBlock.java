@@ -28,6 +28,10 @@ public class BasicBlock extends Value {
         }
     }
 
+    public void setName(String name){
+        if(this.name == null) this.name = name;
+    }
+
     public void setVirtualNum(String num) {
         this.name = num;
     }

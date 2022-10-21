@@ -4,8 +4,6 @@ import Middle.IRElement.Type.ValueType;
 import Utils.LinkedList;
 import Utils.LinkedListNode;
 
-import java.util.ArrayList;
-
 public class Value extends LinkedListNode {
     public String name;
     public LinkedList<Use> uses;
@@ -13,8 +11,9 @@ public class Value extends LinkedListNode {
     public ValueType.Type type;
 
     public boolean isGlobal = false;
-    public Value firstAddr;
-    public Value(){}
+
+    public Value() {
+    }
 
     public Value(String name) {
         this.name = name;
@@ -27,16 +26,20 @@ public class Value extends LinkedListNode {
         this.uses = new LinkedList<>();
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public void setType(ValueType.Type type) {
         this.type = type;
     }
 
-    public void setFirstAddr(Value firstAddr) {
-        this.firstAddr = firstAddr;
+    public ValueType.Type getInnerType() {
+        return this.type.getType();
     }
 
     public ValueType.Type getType() {
-        return this.type.getType();
+        return this.type;
     }
 
     public String getName() {

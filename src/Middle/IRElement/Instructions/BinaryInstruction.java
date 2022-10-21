@@ -17,6 +17,6 @@ public class BinaryInstruction extends BaseInstruction {
 
     @Override
     public String toString() {
-        return this.result.getName() + " = " + this.op + " " + this.value1.getType() + " " + this.value1.getName() + ", " + this.value2.getName();
+        return this.result.getName() + " = " + this.op + " " + this.value1.getInnerType() + " " + this.value1.getName() + ", " + this.value2.getName();
     }
 }

@@ -13,8 +13,7 @@ public class Compiler {
             TokenHandler tokenHandler = new TokenHandler(p.getTokenArrayList());
             IRBuilder irBuilder = new IRBuilder(tokenHandler.getSyntaxTreeRoot());
             String ir = irBuilder.getIR();
-            System.out.println(ir);
-            FileUtils.toFile(ir,"output.txt");
+            FileUtils.toFile(ir,"llvm_ir.txt");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
