@@ -5,7 +5,6 @@ import Middle.IRElement.Type.ValueType;
 import Middle.IRElement.Value;
 
 import java.util.ArrayList;
-import java.util.Objects;
 
 public class GlobalVariable extends Value {
     public boolean isConst;
@@ -23,6 +22,7 @@ public class GlobalVariable extends Value {
         return "@" + name;
     }
 
+    @SuppressWarnings("unchecked")
     public String getInitials(ValueType.ArrayType arrayType, ArrayList<Object> init) {
         StringBuilder res = new StringBuilder();
         res.append("[");
