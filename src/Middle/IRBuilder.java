@@ -369,7 +369,7 @@ public class IRBuilder {
                 Value value1 = new Constant("0");
                 Value value2 = visitUnaryExp(unaryExp.unaryExp);
                 Op op = new Op(Op.Type.sub);
-                return addBinaryInstruction(value1,value2,op);
+                return addBinaryInstruction(value1, value2, op);
             } else if (unaryExp.unaryOp.opType == UnaryOp.Type.PLUS) {
                 return visitUnaryExp(unaryExp.unaryExp);
             } else {
@@ -497,8 +497,7 @@ public class IRBuilder {
                 currentBasicBlock.appendInst(put);
                 expIndex++;
                 i++;
-            }
-            else {
+            } else {
                 Constant content = new Constant(Integer.toString(ch));
                 CallInstruction put = new CallInstruction(putch, null);
                 put.addParam(content);
@@ -517,34 +516,31 @@ public class IRBuilder {
     }
 
     public void visitIf(Stmt stmt) {
-        Value cond = visitCond(stmt.cond);
-        BasicBlock ifBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
-        currentFunction.addBasicBlock(ifBlock);
-        // 加跳转
-        BranchInstruction branchInstruction = new BranchInstruction(cond, ifBlock, null);
-        currentBasicBlock.appendInst(branchInstruction);
+        BasicBlock ifBlock = new BasicBlock(null, currentFunction);
+        BasicBlock outBlock = new BasicBlock(null, currentFunction);
+        BasicBlock elseBlock = null;
+        if (stmt.type == Stmt.Type.Branch_ELSE) elseBlock = new BasicBlock(null, currentFunction);
+        visitCond(stmt.cond, ifBlock, outBlock, elseBlock);
 
+        ifBlock.setVirtualNum(VirtualRegister.getRegister());
+        currentFunction.addBasicBlock(ifBlock);
+        // 进入条件正确执行体
         currentBasicBlock = ifBlock;
         visitStmt(stmt.stmts.get(0));
         BranchInstruction out = new BranchInstruction(null);
         currentBasicBlock.appendInst(out);
-
-        BasicBlock outBlock;
+        // 进入条件错误执行体
         if (stmt.type == Stmt.Type.Branch_ELSE) {
             // 访问else中的内容
-            BasicBlock elseBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
+            elseBlock.setVirtualNum(VirtualRegister.getRegister());
             currentFunction.addBasicBlock(elseBlock);
             currentBasicBlock = elseBlock;
             visitStmt(stmt.stmts.get(1));
             BranchInstruction out2 = new BranchInstruction(null);
             currentBasicBlock.appendInst(out2);
-            outBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
+            outBlock.setVirtualNum(VirtualRegister.getRegister());
             out2.setLabelTrue(outBlock);
-            branchInstruction.setLabelFalse(elseBlock);
-        } else {
-            outBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
-            branchInstruction.setLabelFalse(outBlock);
-        }
+        } else outBlock.setVirtualNum(VirtualRegister.getRegister());
         out.setLabelTrue(outBlock);
         currentBasicBlock = outBlock;
         currentFunction.addBasicBlock(outBlock);
@@ -559,35 +555,30 @@ public class IRBuilder {
     }
 
     public void visitLoop(Stmt stmt) {
+        BasicBlock.LoopBlock ifBlock = new BasicBlock.LoopBlock(null, currentFunction);
+        BasicBlock outBlock = new BasicBlock(currentFunction);
         // 新建判断基本分支指令，加到目前的基本块中
         BranchInstruction judge = new BranchInstruction(null);
         currentBasicBlock.appendInst(judge);
-        // 新建结束模块
-        BasicBlock outBlock = new BasicBlock(currentFunction);
         // 新建判断基本块，回填到判断分支指令
         BasicBlock judgeBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
         currentFunction.addBasicBlock(judgeBlock);
         judge.setLabelTrue(judgeBlock);
         // 进入判断基本块
         currentBasicBlock = judgeBlock;
-        Value cond = visitCond(stmt.cond);
-        // 新建分支指令
-        BranchInstruction branchInstruction = new BranchInstruction(cond, null, null);
-        currentBasicBlock.appendInst(branchInstruction);
+        visitCond(stmt.cond, ifBlock, null, outBlock);
         // 新建ture基本块,回填判断块中的分支指令
-        BasicBlock.LoopBlock ifBlock = new BasicBlock.LoopBlock(VirtualRegister.getRegister(), currentFunction);
+        ifBlock.setVirtualNum(VirtualRegister.getRegister());
         currentLoop = ifBlock;
         currentFunction.addBasicBlock(ifBlock);
         ifBlock.setJudgeBranch(judgeBlock);
         ifBlock.setFalseBranch(outBlock);
-        branchInstruction.setLabelTrue(ifBlock);
         currentBasicBlock = ifBlock;
         visitStmt(stmt.stmts.get(0));
         // 跳回判断基本块
         currentBasicBlock.appendInst(new BranchInstruction(judgeBlock));
         // 设置outBlock的计数器
         outBlock.setVirtualNum(VirtualRegister.getRegister());
-        branchInstruction.setLabelFalse(outBlock);
         currentBasicBlock = outBlock;
         currentFunction.addBasicBlock(outBlock);
     }
@@ -713,51 +704,62 @@ public class IRBuilder {
         }
     }
 
-    public Value visitLAndExp(LAndExp lAndExp) {
-        if (lAndExp.eqExps.size() == 1) return visitEqExp(lAndExp.eqExps.get(0));
-        else {
-            Value value1 = visitEqExp(lAndExp.eqExps.get(0));
-            Value value2 = visitEqExp(lAndExp.eqExps.get(1));
-            Op op = new Op(Op.Op2Type(lAndExp.unaryOps.get(0).token));
-            User res = new User(VirtualRegister.getRegister(), ValueType.i1);
-            currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
-            for (int i = 2; i < lAndExp.eqExps.size(); i++) {
-                value1 = res;
-                value2 = visitEqExp(lAndExp.eqExps.get(i));
-                op = new Op(Op.Op2Type(lAndExp.unaryOps.get(i - 1).token));
-                res = new User(VirtualRegister.getRegister(), ValueType.i1);
-                currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
+    public Value visitLAndExp(LAndExp lAndExp, BasicBlock ifBlock, BasicBlock elseBlock, BasicBlock outBlock) {
+        if(lAndExp.eqExps.size() == 1) return visitEqExp(lAndExp.eqExps.get(0));
+        Value value = null;
+        for (int i = 0; i < lAndExp.eqExps.size(); i++) {
+            value = visitEqExp(lAndExp.eqExps.get(i));
+            // 处理 if(0) if(a) 这种单个数字判断的情况
+            if (value.getType() == ValueType.i32) {
+                User res = new User(VirtualRegister.getRegister(), ValueType.i1);
+                currentBasicBlock.appendInst(new IcmpInstruction(res, value, new Constant("0"), new Op(Op.Type.ne)));
+                value = res;
             }
-            return res;
-        }
-    }
-
-    public Value visitLOrExp(LOrExp lOrExp) {
-        if (lOrExp.lAndExps.size() == 1) return visitLAndExp(lOrExp.lAndExps.get(0));
-        else {
-            Value value1 = visitLAndExp(lOrExp.lAndExps.get(0));
-            Value value2 = visitLAndExp(lOrExp.lAndExps.get(1));
-            Op op = new Op(Op.Op2Type(lOrExp.unaryOps.get(0).token));
-            User res = new User(VirtualRegister.getRegister(), ValueType.i1);
-            currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
-            for (int i = 2; i < lOrExp.lAndExps.size(); i++) {
-                value1 = res;
-                value2 = visitLAndExp(lOrExp.lAndExps.get(i));
-                op = new Op(Op.Op2Type(lOrExp.unaryOps.get(i - 1).token));
-                res = new User(VirtualRegister.getRegister(), ValueType.i1);
-                currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
+            // 对于与来说
+            // 如果是最后一块儿，执行体作为正确跳转, 出判断作为错误跳转
+            // 如果不是最后一块儿，新建下一块儿作为正确跳转，出判断作为错误跳转
+            BasicBlock trueBlock;
+            if (i == lAndExp.eqExps.size() - 1) {
+                trueBlock = ifBlock;
+            } else {
+                BasicBlock judge = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
+                trueBlock = judge;
+                currentFunction.addBasicBlock(judge);
             }
-            return res;
-        }
-    }
-
-    public Value visitCond(Cond cond) {
-        Value value = visitLOrExp(cond.lOrExp);
-        if (value.getType() == ValueType.i32) {
-            User res = new User(VirtualRegister.getRegister(), ValueType.i1);
-            currentBasicBlock.appendInst(new IcmpInstruction(res, value, new Constant("0"), new Op(Op.Type.ne)));
-            return res;
+            if (elseBlock == null) currentBasicBlock.appendInst(new BranchInstruction(value, trueBlock, outBlock));
+            else currentBasicBlock.appendInst(new BranchInstruction(value, trueBlock, elseBlock));
+            currentBasicBlock = trueBlock;
         }
         return value;
+    }
+
+    public void visitLOrExp(LOrExp lOrExp, BasicBlock ifBlock, BasicBlock elseBlock, BasicBlock outBlock) {
+        for (int i = 0; i < lOrExp.lAndExps.size(); i++) {
+            Value value = visitLAndExp(lOrExp.lAndExps.get(i), ifBlock, elseBlock, outBlock);
+            // 处理 if(0) if(a) 这种单个数字判断的情况
+            if (value.getType() == ValueType.i32) {
+                User res = new User(VirtualRegister.getRegister(), ValueType.i1);
+                currentBasicBlock.appendInst(new IcmpInstruction(res, value, new Constant("0"), new Op(Op.Type.ne)));
+                value = res;
+            }
+            // 对于或来说
+            // 如果是最后一块儿，执行体作为正确跳转, 出判断作为错误跳转
+            // 如果不是最后一块儿，执行体作为正确跳转，新建下一块儿判断作为错误跳转
+            BasicBlock falseBlock;
+            if (i == lOrExp.lAndExps.size() - 1) {
+                if (elseBlock == null) falseBlock = outBlock;
+                else falseBlock = elseBlock;
+            } else {
+                BasicBlock judge = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
+                falseBlock = judge;
+                currentFunction.addBasicBlock(judge);
+            }
+            currentBasicBlock.appendInst(new BranchInstruction(value, ifBlock, falseBlock));
+            currentBasicBlock = falseBlock;
+        }
+    }
+
+    public void visitCond(Cond cond, BasicBlock ifBlock, BasicBlock elseBlock, BasicBlock outBlock) {
+        visitLOrExp(cond.lOrExp, ifBlock, elseBlock, outBlock);
     }
 }
