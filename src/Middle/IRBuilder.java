@@ -295,8 +295,9 @@ public class IRBuilder {
                 currentValueTable.addValue(varDef.ident.token.value, arrayPointer);
             }
         } else {
-            ArrayList<Object> init = buildInit(varDef.initVal);
-            GlobalVariable globalVariable = new GlobalVariable(varDef.ident.token.value, true, init);
+            ArrayList<Object> init = null;
+            if (varDef.initVal != null) init = buildInit(varDef.initVal);
+            GlobalVariable globalVariable = new GlobalVariable(varDef.ident.token.value, false, init);
             if (varDef.constExps.size() == 0) {
                 globalVariable.setType(new ValueType.Pointer(ValueType.i32));
                 currentModule.addGlobalVariable(globalVariable);
@@ -368,9 +369,7 @@ public class IRBuilder {
                 Value value1 = new Constant("0");
                 Value value2 = visitUnaryExp(unaryExp.unaryExp);
                 Op op = new Op(Op.Type.sub);
-                User res = new User(VirtualRegister.getRegister(), ValueType.i32);
-                currentBasicBlock.appendInst(new BinaryInstruction(res, value1, value2, op));
-                return res;
+                return addBinaryInstruction(value1,value2,op);
             } else if (unaryExp.unaryOp.opType == UnaryOp.Type.PLUS) {
                 return visitUnaryExp(unaryExp.unaryExp);
             } else {
@@ -486,12 +485,6 @@ public class IRBuilder {
         int expIndex = 0;
         for (int i = 1; i < format.length() - 1; i++) {
             char ch = format.charAt(i);
-            if (ch != '%') {
-                Constant content = new Constant(Integer.toString(ch));
-                CallInstruction put = new CallInstruction(putch, null);
-                put.addParam(content);
-                currentBasicBlock.appendInst(put);
-            }
             if (ch == '\\') {
                 Constant content = new Constant("10");
                 CallInstruction put = new CallInstruction(putch, null);
@@ -504,6 +497,12 @@ public class IRBuilder {
                 currentBasicBlock.appendInst(put);
                 expIndex++;
                 i++;
+            }
+            else {
+                Constant content = new Constant(Integer.toString(ch));
+                CallInstruction put = new CallInstruction(putch, null);
+                put.addParam(content);
+                currentBasicBlock.appendInst(put);
             }
         }
     }
