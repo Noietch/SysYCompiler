@@ -385,7 +385,19 @@ public class IRBuilder {
     public Value visitPrimaryExp(PrimaryExp primaryExp) {
         if (primaryExp.exp != null) return visitExp(primaryExp.exp);
         else if (primaryExp.lVal != null) {
-            return visitLVal(primaryExp.lVal);
+            Value value = visitLVal(primaryExp.lVal);
+            ValueType.Type type = value.getType();
+            ValueType.Type innerType = value.getInnerType();
+            if (type instanceof ValueType.Pointer && innerType == ValueType.i32) {
+                User res = new User(VirtualRegister.getRegister(), value.getInnerType());
+                currentBasicBlock.appendInst(new LoadInstruction(res, value));
+                return res;
+            } else if (innerType instanceof ValueType.ArrayType) {
+                User res = new User(VirtualRegister.getRegister(), new ValueType.Pointer(value.getInnerType().getType()));
+                GetElementPtr getElementPtr = new GetElementPtr(res, value, new Constant("0"),  new Constant("0"));
+                currentBasicBlock.appendInst(getElementPtr);
+                return res;
+            } else return value;
         } else return new Constant(primaryExp.getNumber());
     }
 
@@ -396,17 +408,20 @@ public class IRBuilder {
         } else {
             Value firstAddr = value;
             ValueType.Type lValType = value.getInnerType();
+            // 说明这是数组参数
             if (lValType instanceof ValueType.Pointer) {
-                firstAddr = new User(VirtualRegister.getRegister(), value.getInnerType());
-                LoadInstruction loadFirst = new LoadInstruction((User) firstAddr, value);
-                currentBasicBlock.appendInst(loadFirst);
                 if (lVal.exps.size() > 0) {
+                    // 对于函数参数来说，需要load
+                    firstAddr = new User(VirtualRegister.getRegister(), value.getInnerType());
+                    LoadInstruction loadFirst = new LoadInstruction((User) firstAddr, value);
+                    currentBasicBlock.appendInst(loadFirst);
+                    // 对于多维数组，首先把前n-1的维度平移，这里n=1
                     Value biasRes = new User(null, new ValueType.Pointer(value.getInnerType().getType()));
                     GetElementPtr getElementPtr = new GetElementPtr(biasRes, firstAddr, visitExp(lVal.exps.get(0)));
                     biasRes.setName(VirtualRegister.getRegister());
                     currentBasicBlock.appendInst(getElementPtr);
                     firstAddr = biasRes;
-                    // 二维数组
+                    // 如果是二维数组
                     if (firstAddr.getInnerType() instanceof ValueType.ArrayType) {
                         value = firstAddr;
                         firstAddr = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(firstAddr.getInnerType().getType().getType()));
