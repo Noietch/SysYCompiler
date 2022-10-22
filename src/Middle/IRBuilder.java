@@ -743,7 +743,8 @@ public class IRBuilder {
     public void visitLOrExp(LOrExp lOrExp, BasicBlock ifBlock, BasicBlock elseBlock, BasicBlock outBlock) {
 
         for (int i = 0; i < lOrExp.lAndExps.size(); i++) {
-            BasicBlock judge = new BasicBlock(null, currentFunction);
+            BasicBlock judge = null;
+            if (i != lOrExp.lAndExps.size() - 1) judge = new BasicBlock(null, currentFunction);
             Value value = visitLAndExp(lOrExp.lAndExps.get(i), ifBlock, elseBlock, outBlock, judge);
             // 处理 if(0) if(a) 这种单个数字判断的情况
             if (value.getType() == ValueType.i32) {
