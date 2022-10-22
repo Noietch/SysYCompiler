@@ -386,9 +386,9 @@ public class IRBuilder {
         if (primaryExp.exp != null) return visitExp(primaryExp.exp);
         else if (primaryExp.lVal != null) {
             Value value = visitLVal(primaryExp.lVal);
-            ValueType.Type type = value.getType();
             ValueType.Type innerType = value.getInnerType();
-            if (type instanceof ValueType.Pointer && innerType == ValueType.i32) {
+            if(value instanceof Constant) return value;
+            else if (innerType instanceof ValueType.Pointer || innerType == ValueType.i32) {
                 User res = new User(VirtualRegister.getRegister(), value.getInnerType());
                 currentBasicBlock.appendInst(new LoadInstruction(res, value));
                 return res;
@@ -397,7 +397,7 @@ public class IRBuilder {
                 GetElementPtr getElementPtr = new GetElementPtr(res, value, new Constant("0"),  new Constant("0"));
                 currentBasicBlock.appendInst(getElementPtr);
                 return res;
-            } else return value;
+            } else throw new RuntimeException("param");
         } else return new Constant(primaryExp.getNumber());
     }
 
