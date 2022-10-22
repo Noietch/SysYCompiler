@@ -416,16 +416,17 @@ public class IRBuilder {
                     LoadInstruction loadFirst = new LoadInstruction((User) firstAddr, value);
                     currentBasicBlock.appendInst(loadFirst);
                     // 对于多维数组，首先把前n-1的维度平移，这里n=1
-                    Value biasRes = new User(null, new ValueType.Pointer(value.getInnerType().getType()));
-                    GetElementPtr getElementPtr = new GetElementPtr(biasRes, firstAddr, visitExp(lVal.exps.get(0)));
-                    biasRes.setName(VirtualRegister.getRegister());
+                    Value bias = visitExp(lVal.exps.get(0));
+                    Value biasRes = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(value.getInnerType().getType()));
+                    GetElementPtr getElementPtr = new GetElementPtr(biasRes, firstAddr, bias);
                     currentBasicBlock.appendInst(getElementPtr);
                     firstAddr = biasRes;
                     // 如果是二维数组
-                    if (firstAddr.getInnerType() instanceof ValueType.ArrayType) {
+                    if (lVal.exps.size() > 1) {
                         value = firstAddr;
+                        bias = visitExp(lVal.exps.get(1));
                         firstAddr = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(firstAddr.getInnerType().getType().getType()));
-                        getElementPtr = new GetElementPtr(firstAddr, value, new Constant("0"), visitExp(lVal.exps.get(1)));
+                        getElementPtr = new GetElementPtr(firstAddr, value, new Constant("0"), bias);
                         currentBasicBlock.appendInst(getElementPtr);
                     }
                 }
