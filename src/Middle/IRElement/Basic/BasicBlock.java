@@ -7,7 +7,7 @@ import Utils.LinkedList;
 public class BasicBlock extends Value {
     public Function parent;
     public LinkedList<BaseInstruction> instructions;
-    private boolean isTerminate = false;
+    public boolean isTerminate = false;
 
     public BasicBlock(String name, Function parent) {
         this.name = name;
