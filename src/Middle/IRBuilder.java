@@ -576,7 +576,7 @@ public class IRBuilder {
         currentBasicBlock = ifBlock;
         visitStmt(stmt.stmts.get(0));
         // 跳回判断基本块
-        currentBasicBlock.appendInst(new BranchInstruction(judgeBlock));
+        currentBasicBlock.setTerminator(new BranchInstruction(judgeBlock));
         // 设置outBlock的计数器
         outBlock.setVirtualNum(VirtualRegister.getRegister());
         currentBasicBlock = outBlock;

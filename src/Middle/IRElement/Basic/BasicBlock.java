@@ -39,7 +39,7 @@ public class BasicBlock extends Value {
     }
 
     public void setTerminator(BaseInstruction newNode) {
-        instructions.append(newNode);
+        appendInst(newNode);
         isTerminate = true;
     }
 
