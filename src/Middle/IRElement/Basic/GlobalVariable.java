@@ -59,7 +59,7 @@ public class GlobalVariable extends Value {
                     return String.format("@%s = dso_local global %s %s", name, arrayType, "zeroinitializer");
                 }
             } else if (init.get(0) instanceof Integer) {
-                return String.format("@%s = dso_local global %s %s", name, type, init.get(0));
+                return String.format("@%s = dso_local global %s %s", name, type.getType(), init.get(0));
             } else {
                 ValueType.ArrayType arrayType = (ValueType.ArrayType) type.getType();
                 StringBuilder res;
