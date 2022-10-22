@@ -144,7 +144,7 @@ public class IRBuilder {
         // 创建函数`
         currentFunction = new Function(mainFuncDef.ident.token.value, new FuncType("int"), currentModule);
         // 创建第一个代码块
-        currentBasicBlock = new BasicBlock(getRegister(), currentFunction);
+        currentBasicBlock = new BasicBlock(VirtualRegister.getRegister(), currentFunction);
         // 将代码块添加到函数中
         currentFunction.addBasicBlock(currentBasicBlock);
         currentModule.addFunctions(currentFunction);
