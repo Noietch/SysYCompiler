@@ -23,9 +23,9 @@ public class IRBuilder {
     public IRBuilder(CompUnit treeRoot) {
         this.syntaxTreeRoot = treeRoot;
     }
-    
-    public String getRegister(){
-        if(!currentBasicBlock.isTerminate) return VirtualRegister.getRegister();
+
+    public String getRegister() {
+        if (!currentBasicBlock.isTerminate) return VirtualRegister.getRegister();
         else return "isTerminated";
     }
 
@@ -392,14 +392,14 @@ public class IRBuilder {
         else if (primaryExp.lVal != null) {
             Value value = visitLVal(primaryExp.lVal);
             ValueType.Type innerType = value.getInnerType();
-            if(value instanceof Constant) return value;
+            if (value instanceof Constant) return value;
             else if (innerType instanceof ValueType.Pointer || innerType == ValueType.i32) {
                 User res = new User(getRegister(), value.getInnerType());
                 currentBasicBlock.appendInst(new LoadInstruction(res, value));
                 return res;
             } else if (innerType instanceof ValueType.ArrayType) {
                 User res = new User(getRegister(), new ValueType.Pointer(value.getInnerType().getType()));
-                GetElementPtr getElementPtr = new GetElementPtr(res, value, new Constant("0"),  new Constant("0"));
+                GetElementPtr getElementPtr = new GetElementPtr(res, value, new Constant("0"), new Constant("0"));
                 currentBasicBlock.appendInst(getElementPtr);
                 return res;
             } else throw new RuntimeException("param");
@@ -598,7 +598,7 @@ public class IRBuilder {
         currentBasicBlock.appendInst(storeInstruction);
     }
 
-    public Value zext(Value value){
+    public Value zext(Value value) {
         Value newValue = value;
         if (value.getType() != ValueType.i32) {
             newValue = new User(getRegister(), ValueType.i32);
@@ -606,6 +606,7 @@ public class IRBuilder {
         }
         return newValue;
     }
+
     public Value addBinaryInstruction(Value value1, Value value2, Op op) {
         if (value1 instanceof Constant && value2 instanceof Constant)
             return eval((Constant) value1, (Constant) value2, op);
@@ -705,7 +706,7 @@ public class IRBuilder {
         }
     }
 
-    public Value visitLAndExp(LAndExp lAndExp, BasicBlock ifBlock, BasicBlock elseBlock, BasicBlock outBlock) {
+    public Value visitLAndExp(LAndExp lAndExp, BasicBlock ifBlock, BasicBlock elseBlock, BasicBlock outBlock, BasicBlock next) {
         if (lAndExp.eqExps.size() == 1) return visitEqExp(lAndExp.eqExps.get(0));
         Value value = null;
         for (int i = 0; i < lAndExp.eqExps.size(); i++) {
@@ -727,16 +728,23 @@ public class IRBuilder {
                 trueBlock = judge;
                 currentFunction.addBasicBlock(judge);
             }
-            if (elseBlock == null) currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, outBlock));
-            else currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, elseBlock));
-            currentBasicBlock = trueBlock;
+            if (i == lAndExp.eqExps.size() - 1 && next != null)
+                currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, next));
+            else {
+                if (elseBlock == null)
+                    currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, outBlock));
+                else currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, elseBlock));
+                currentBasicBlock = trueBlock;
+            }
         }
         return value;
     }
 
     public void visitLOrExp(LOrExp lOrExp, BasicBlock ifBlock, BasicBlock elseBlock, BasicBlock outBlock) {
+
         for (int i = 0; i < lOrExp.lAndExps.size(); i++) {
-            Value value = visitLAndExp(lOrExp.lAndExps.get(i), ifBlock, elseBlock, outBlock);
+            BasicBlock judge = new BasicBlock(null, currentFunction);
+            Value value = visitLAndExp(lOrExp.lAndExps.get(i), ifBlock, elseBlock, outBlock, judge);
             // 处理 if(0) if(a) 这种单个数字判断的情况
             if (value.getType() == ValueType.i32) {
                 User res = new User(getRegister(), ValueType.i1);
@@ -751,7 +759,7 @@ public class IRBuilder {
                 if (elseBlock == null) falseBlock = outBlock;
                 else falseBlock = elseBlock;
             } else {
-                BasicBlock judge = new BasicBlock(getRegister(), currentFunction);
+                judge.setVirtualNum(VirtualRegister.getRegister());
                 falseBlock = judge;
                 currentFunction.addBasicBlock(judge);
             }
