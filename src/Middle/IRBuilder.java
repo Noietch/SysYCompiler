@@ -681,7 +681,7 @@ public class IRBuilder {
             User res = new User(getRegister(), ValueType.i1);
             currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             for (int i = 2; i < relExp.addExps.size(); i++) {
-                value1 = res;
+                value1 = zext(res);
                 value2 = zext(visitAddExp(relExp.addExps.get(i)));
                 op = new Op(Op.Op2Type(relExp.unaryOps.get(i - 1).token));
                 res = new User(getRegister(), ValueType.i1);
@@ -700,7 +700,7 @@ public class IRBuilder {
             User res = new User(getRegister(), ValueType.i1);
             currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             for (int i = 2; i < eqExp.relExps.size(); i++) {
-                value1 = res;
+                value1 = zext(res);
                 value2 = zext(visitRelExp(eqExp.relExps.get(i)));
                 op = new Op(Op.Op2Type(eqExp.unaryOps.get(i - 1).token));
                 res = new User(getRegister(), ValueType.i1);
