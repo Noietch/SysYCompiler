@@ -484,6 +484,10 @@ public class IRBuilder {
         Function putch = (Function) currentValueTable.getRegister("putch");
         Function putInt = (Function) currentValueTable.getRegister("putint");
         int expIndex = 0;
+
+        ArrayList<Value> params = new ArrayList<>();
+        for (Exp exp : stmt.exps) params.add(visitExp(exp));
+
         for (int i = 1; i < format.length() - 1; i++) {
             char ch = format.charAt(i);
             if (ch == '\\') {
@@ -494,7 +498,7 @@ public class IRBuilder {
                 i++;
             } else if (ch == '%') {
                 CallInstruction put = new CallInstruction(putInt, null);
-                put.addParam(visitExp(stmt.exps.get(expIndex)));
+                put.addParam(params.get(expIndex));
                 currentBasicBlock.appendInst(put);
                 expIndex++;
                 i++;
@@ -728,14 +732,13 @@ public class IRBuilder {
                 trueBlock = judge;
                 currentFunction.addBasicBlock(judge);
             }
-            if (i == lAndExp.eqExps.size() - 1 && next != null)
+            // 如果是最后一个判断，下面还有或判断的话说明如果正确就跳到执行体，如果错误就跳到或
+            if (next != null)
                 currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, next));
-            else {
-                if (elseBlock == null)
-                    currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, outBlock));
-                else currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, elseBlock));
-                currentBasicBlock = trueBlock;
-            }
+            else if (elseBlock == null)
+                currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, outBlock));
+            else currentBasicBlock.setTerminator(new BranchInstruction(value, trueBlock, elseBlock));
+            if (i != lAndExp.eqExps.size() - 1) currentBasicBlock = trueBlock;
         }
         return value;
     }
@@ -760,6 +763,7 @@ public class IRBuilder {
                 if (elseBlock == null) falseBlock = outBlock;
                 else falseBlock = elseBlock;
             } else {
+                assert judge != null;
                 judge.setVirtualNum(VirtualRegister.getRegister());
                 falseBlock = judge;
                 currentFunction.addBasicBlock(judge);

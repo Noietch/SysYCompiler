@@ -15,7 +15,6 @@ public class CompilerTest {
                 IRBuilder irBuilder = new IRBuilder(tokenHandler.getSyntaxTreeRoot());
                 String ir = irBuilder.getIR();
                 FileUtils.toFile(ir, "output/output" + i + ".txt");
-
             } catch (Exception e) {
                 System.out.println("error at file " + i);
             }
