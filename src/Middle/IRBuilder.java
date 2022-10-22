@@ -431,8 +431,8 @@ public class IRBuilder {
                 }
             } else {
                 for (int i = 0; i < lVal.exps.size(); i++) {
-                    firstAddr = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(value.getInnerType().getType()));
                     Value bias = visitExp(lVal.exps.get(i));
+                    firstAddr = new Value(VirtualRegister.getRegister(), new ValueType.Pointer(value.getInnerType().getType()));
                     GetElementPtr getElementPtr = new GetElementPtr(firstAddr, value, new Constant("0"), bias);
                     currentBasicBlock.appendInst(getElementPtr);
                     value = firstAddr;
