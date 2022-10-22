@@ -598,20 +598,20 @@ public class IRBuilder {
         currentBasicBlock.appendInst(storeInstruction);
     }
 
+    public Value zext(Value value){
+        Value newValue = value;
+        if (value.getType() != ValueType.i32) {
+            newValue = new User(getRegister(), ValueType.i32);
+            currentBasicBlock.appendInst(new ZextInstruction(value, ValueType.i32, newValue));
+        }
+        return newValue;
+    }
     public Value addBinaryInstruction(Value value1, Value value2, Op op) {
         if (value1 instanceof Constant && value2 instanceof Constant)
             return eval((Constant) value1, (Constant) value2, op);
         else {
-            Value newValue1 = value1;
-            Value newValue2 = value2;
-            if (value1.getType() != ValueType.i32) {
-                newValue1 = new User(getRegister(), ValueType.i32);
-                currentBasicBlock.appendInst(new ZextInstruction(value1, ValueType.i32, newValue1));
-            }
-            if (value2.getType() != ValueType.i32) {
-                newValue2 = new User(getRegister(), ValueType.i32);
-                currentBasicBlock.appendInst(new ZextInstruction(value2, ValueType.i32, newValue2));
-            }
+            Value newValue1 = zext(value1);
+            Value newValue2 = zext(value2);
             User res = new User(getRegister(), ValueType.i32);
             currentBasicBlock.appendInst(new BinaryInstruction(res, newValue1, newValue2, op));
             return res;
@@ -629,7 +629,8 @@ public class IRBuilder {
             return new Constant(Integer.toString(Integer.parseInt(c1.name) / Integer.parseInt(c2.name)));
         else if (op.type == Op.Type.srem)
             return new Constant(Integer.toString(Integer.parseInt(c1.name) % Integer.parseInt(c2.name)));
-        else throw new RuntimeException();
+        else
+            throw new RuntimeException();
     }
 
     public Value visitMulExp(MulExp mulExp) {
@@ -669,14 +670,14 @@ public class IRBuilder {
     public Value visitRelExp(RelExp relExp) {
         if (relExp.addExps.size() == 1) return visitAddExp(relExp.addExps.get(0));
         else {
-            Value value1 = visitAddExp(relExp.addExps.get(0));
-            Value value2 = visitAddExp(relExp.addExps.get(1));
+            Value value1 = zext(visitAddExp(relExp.addExps.get(0)));
+            Value value2 = zext(visitAddExp(relExp.addExps.get(1)));
             Op op = new Op(Op.Op2Type(relExp.unaryOps.get(0).token));
             User res = new User(getRegister(), ValueType.i1);
             currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             for (int i = 2; i < relExp.addExps.size(); i++) {
                 value1 = res;
-                value2 = visitAddExp(relExp.addExps.get(i));
+                value2 = zext(visitAddExp(relExp.addExps.get(i)));
                 op = new Op(Op.Op2Type(relExp.unaryOps.get(i - 1).token));
                 res = new User(getRegister(), ValueType.i1);
                 currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
@@ -688,14 +689,14 @@ public class IRBuilder {
     public Value visitEqExp(EqExp eqExp) {
         if (eqExp.relExps.size() == 1) return visitRelExp(eqExp.relExps.get(0));
         else {
-            Value value1 = visitRelExp(eqExp.relExps.get(0));
-            Value value2 = visitRelExp(eqExp.relExps.get(1));
+            Value value1 = zext(visitRelExp(eqExp.relExps.get(0)));
+            Value value2 = zext(visitRelExp(eqExp.relExps.get(1)));
             Op op = new Op(Op.Op2Type(eqExp.unaryOps.get(0).token));
             User res = new User(getRegister(), ValueType.i1);
             currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
             for (int i = 2; i < eqExp.relExps.size(); i++) {
                 value1 = res;
-                value2 = visitRelExp(eqExp.relExps.get(i));
+                value2 = zext(visitRelExp(eqExp.relExps.get(i)));
                 op = new Op(Op.Op2Type(eqExp.unaryOps.get(i - 1).token));
                 res = new User(getRegister(), ValueType.i1);
                 currentBasicBlock.appendInst(new IcmpInstruction(res, value1, value2, op));
