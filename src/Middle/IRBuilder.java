@@ -9,13 +9,14 @@ import Middle.IRElement.Type.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Stack;
 
 public class IRBuilder {
     public CompUnit syntaxTreeRoot; // 语法树根
     public ValueTable currentValueTable = new ValueTable(null);
     public BasicBlock currentBasicBlock = null;
 
-    public BasicBlock.LoopBlock currentLoop = null;
+    public Stack<BasicBlock.LoopBlock> currentLoop = new Stack<>();
     public Module currentModule = new Module();
     public Function currentFunction = null;
     public int currentPos = 0;
@@ -551,11 +552,11 @@ public class IRBuilder {
     }
 
     public void visitBreak() {
-        currentBasicBlock.setTerminator(new BranchInstruction(currentLoop.falseBranch));
+        currentBasicBlock.setTerminator(new BranchInstruction(currentLoop.peek().falseBranch));
     }
 
     public void visitContinue() {
-        currentBasicBlock.setTerminator(new BranchInstruction(currentLoop.judgeBranch));
+        currentBasicBlock.setTerminator(new BranchInstruction(currentLoop.peek().judgeBranch));
     }
 
     public void visitLoop(Stmt stmt) {
@@ -573,7 +574,7 @@ public class IRBuilder {
         visitCond(stmt.cond, ifBlock, null, outBlock);
         // 新建ture基本块,回填判断块中的分支指令
         ifBlock.setVirtualNum(VirtualRegister.getRegister());
-        currentLoop = ifBlock;
+        currentLoop.push(ifBlock);
         currentFunction.addBasicBlock(ifBlock);
         ifBlock.setJudgeBranch(judgeBlock);
         ifBlock.setFalseBranch(outBlock);
@@ -585,6 +586,7 @@ public class IRBuilder {
         outBlock.setVirtualNum(VirtualRegister.getRegister());
         currentBasicBlock = outBlock;
         currentFunction.addBasicBlock(outBlock);
+        currentLoop.pop();
     }
 
     public void visitInput(Stmt stmt) {

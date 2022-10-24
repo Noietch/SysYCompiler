@@ -8,7 +8,7 @@ public class CompilerTest {
         for (int i = 1; i <= 30; i++) {
             try {
                 System.out.println("file: " + i);
-                String src = FileUtils.readFile("test/2022/C/testfile" + i + ".txt");
+                String src = FileUtils.readFile("test/2022/A/testfile" + i + ".txt");
                 Parser p = new Parser(src);
                 p.getSymbol();
                 TokenHandler tokenHandler = new TokenHandler(p.getTokenArrayList());
