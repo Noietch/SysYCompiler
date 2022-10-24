@@ -21,6 +21,8 @@ public class IRBuilder {
     public Function currentFunction = null;
     public int currentPos = 0;
 
+    public boolean isGlobalDefine = true;
+
     public IRBuilder(CompUnit treeRoot) {
         this.syntaxTreeRoot = treeRoot;
     }
@@ -43,6 +45,7 @@ public class IRBuilder {
     public void visitCompUnit(CompUnit compUnit) {
         if (compUnit.decls.size() != 0)
             for (Decl decl : compUnit.decls) visitDecl(decl);
+        isGlobalDefine = false;
         if (compUnit.funcDefs.size() != 0)
             for (FuncDef funcDef : compUnit.funcDefs) visitFuncDef(funcDef);
         visitMainFuncDef(compUnit.mainFuncDef);
@@ -192,18 +195,20 @@ public class IRBuilder {
                 }
                 // 初值
                 currentPos = 0;
-                visitConstInitVal(firstAddr, constDef.constInitVal, true);
+                visitConstInitVal(firstAddr, constDef.constInitVal, true, arrayPointer);
                 // 记录符号
+                arrayPointer.setConst();
                 currentValueTable.addValue(constDef.ident.token.value, arrayPointer);
             }
         } else {
-            ArrayList<Object> init = buildInit(constDef.constInitVal);
+            ArrayList<Constant> constants = new ArrayList<>();
+            ArrayList<Object> init = buildInit(constDef.constInitVal, constants);
             GlobalVariable globalVariable = new GlobalVariable(constDef.ident.token.value, true, init);
+            globalVariable.addValue(constants);
+            // 如果是数字
             if (constDef.constExps.size() == 0) {
-                // 增加
                 globalVariable.setType(new ValueType.Pointer(ValueType.i32));
                 currentModule.addGlobalVariable(globalVariable);
-
                 ConstExp constExp = (ConstExp) constDef.constInitVal.syntaxNodes.get(0);
                 int size = ((Constant) visitConstExp(constExp)).getValue();
                 currentValueTable.addValue(constDef.ident.token.value, new Constant(Integer.toString(size)));
@@ -222,19 +227,21 @@ public class IRBuilder {
         }
     }
 
-    public ArrayList<Object> buildInit(ConstInitVal constInitVal) {
+    public ArrayList<Object> buildInit(ConstInitVal constInitVal, ArrayList<Constant> constants) {
         ArrayList<Object> res = new ArrayList<>();
         if (constInitVal.initType == VarType.Var) {
             Constant initValValue = (Constant) visitConstExp((ConstExp) constInitVal.syntaxNodes.get(0));
+            // 增加常量
+            constants.add(initValValue);
             res.add(initValValue.getValue());
         } else {
             for (SyntaxNode syntaxNode : constInitVal.syntaxNodes)
-                res.add(buildInit((ConstInitVal) syntaxNode));
+                res.add(buildInit((ConstInitVal) syntaxNode, constants));
         }
         return res;
     }
 
-    public void visitConstInitVal(Value pointer, ConstInitVal constInitVal, boolean isArray) {
+    public void visitConstInitVal(Value pointer, ConstInitVal constInitVal, boolean isArray, Value arrayPointer) {
         Value res;
         if (constInitVal.initType == VarType.Var) {
             if (isArray && currentPos != 0) {
@@ -242,14 +249,15 @@ public class IRBuilder {
                 GetElementPtr getElementPtr = new GetElementPtr(res, pointer, new Constant(Integer.toString(currentPos)));
                 currentBasicBlock.appendInst(getElementPtr);
             } else res = pointer;
-            Value initValValue = visitConstExp((ConstExp) constInitVal.syntaxNodes.get(0));
+            Constant initValValue = (Constant) visitConstExp((ConstExp) constInitVal.syntaxNodes.get(0));
+            arrayPointer.addValue(initValValue);
             StoreInstruction storeInstruction = new StoreInstruction(initValValue, res);
             currentBasicBlock.appendInst(storeInstruction);
             currentPos++;
         } else {
             for (SyntaxNode syntaxNode : constInitVal.syntaxNodes) {
                 ConstInitVal initVal = (ConstInitVal) syntaxNode;
-                visitConstInitVal(pointer, initVal, isArray);
+                visitConstInitVal(pointer, initVal, isArray, arrayPointer);
             }
         }
     }
@@ -299,9 +307,11 @@ public class IRBuilder {
                 currentValueTable.addValue(varDef.ident.token.value, arrayPointer);
             }
         } else {
+            ArrayList<Constant> constants = new ArrayList<>();
             ArrayList<Object> init = null;
-            if (varDef.initVal != null) init = buildInit(varDef.initVal);
+            if (varDef.initVal != null) init = buildInit(varDef.initVal, constants);
             GlobalVariable globalVariable = new GlobalVariable(varDef.ident.token.value, false, init);
+            globalVariable.addValue(constants);
             if (varDef.constExps.size() == 0) {
                 globalVariable.setType(new ValueType.Pointer(ValueType.i32));
                 currentModule.addGlobalVariable(globalVariable);
@@ -320,14 +330,15 @@ public class IRBuilder {
         }
     }
 
-    public ArrayList<Object> buildInit(InitVal initVal) {
+    public ArrayList<Object> buildInit(InitVal initVal, ArrayList<Constant> constants) {
         ArrayList<Object> res = new ArrayList<>();
         if (initVal.initType == VarType.Var) {
             Constant initValValue = (Constant) visitExp((Exp) initVal.syntaxNodes.get(0));
+            constants.add(initValValue);
             res.add(initValValue.getValue());
         } else {
             for (SyntaxNode syntaxNode : initVal.syntaxNodes)
-                res.add(buildInit((InitVal) syntaxNode));
+                res.add(buildInit((InitVal) syntaxNode, constants));
         }
         return res;
     }
@@ -391,7 +402,44 @@ public class IRBuilder {
     public Value visitPrimaryExp(PrimaryExp primaryExp) {
         if (primaryExp.exp != null) return visitExp(primaryExp.exp);
         else if (primaryExp.lVal != null) {
-            Value value = visitLVal(primaryExp.lVal);
+            Value value = currentValueTable.getRegister(primaryExp.lVal.getName());
+            // ============================= 全局【非常量】【未初始化】【数组变量】 ===========================
+            if (value instanceof GlobalVariable && !value.isConst && isGlobalDefine) {
+                GlobalVariable globalVariable = (GlobalVariable) value;
+                ValueType.Type lValType = value.getInnerType();
+                if (globalVariable.init == null && lValType instanceof ValueType.ArrayType) {
+                    ArrayList<Integer> dim = lValType.getDim();
+                    if (primaryExp.lVal.exps.size() == 1 && dim.size() == 1 || primaryExp.lVal.exps.size() == 2 && dim.size() == 2)
+                        return new Constant("0");
+                }
+            }
+            // ========================== 常量值 =================================
+            if (value.isConst || value instanceof GlobalVariable && isGlobalDefine) {
+                ValueType.Type lValType = value.getInnerType();
+                // 如果是全局常量数组
+                if (lValType instanceof ValueType.ArrayType) {
+                    ArrayList<Integer> dim = lValType.getDim();
+                    // 如果是一维数组
+                    if (primaryExp.lVal.exps.size() == 1 && dim.size() == 1) {
+                        Value temp = visitExp(primaryExp.lVal.exps.get(0));
+                        if (temp instanceof Constant) {
+                            int pos = Integer.parseInt(temp.name);
+                            return value.getValue(pos);
+                        }
+                    } else if (primaryExp.lVal.exps.size() == 2 && dim.size() == 2) {
+                        // 获取数组维度
+                        Value rowConst = visitExp(primaryExp.lVal.exps.get(0));
+                        Value colConst = visitExp(primaryExp.lVal.exps.get(1));
+                        if (rowConst instanceof Constant && colConst instanceof Constant) {
+                            int row = Integer.parseInt(rowConst.name);
+                            int col = Integer.parseInt(colConst.name);
+                            return value.getValue(row * dim.get(1) + col);
+                        }
+                    }
+                }
+            }
+
+            value = visitLVal(primaryExp.lVal);
             ValueType.Type innerType = value.getInnerType();
             if (value instanceof Constant) return value;
             else if (innerType instanceof ValueType.Pointer || innerType == ValueType.i32) {

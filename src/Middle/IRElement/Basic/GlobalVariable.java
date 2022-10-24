@@ -6,7 +6,7 @@ import Middle.IRElement.Value;
 import java.util.ArrayList;
 
 public class GlobalVariable extends Value {
-    public boolean isConst;
+
     public ArrayList<Object> init;
 
     public GlobalVariable(String name, boolean isConst, ArrayList<Object> init) {
