@@ -1,4 +1,4 @@
-import Front.LexicalAnalyzer.Parser;
+import Front.LexicalAnalyzer.Scanner;
 import Front.SyntaxAnalyzer.TokenHandler;
 import Middle.IRBuilder;
 import Utils.FileUtils;
@@ -8,7 +8,7 @@ public class Compiler {
     public static void main(String[] args) {
         try {
             String src = FileUtils.readFile("testfile.txt");
-            Parser p = new Parser(src);
+            Scanner p = new Scanner(src);
             p.getSymbol();
             TokenHandler tokenHandler = new TokenHandler(p.getTokenArrayList());
             IRBuilder irBuilder = new IRBuilder(tokenHandler.getSyntaxTreeRoot());
