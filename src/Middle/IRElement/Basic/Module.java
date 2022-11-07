@@ -5,16 +5,16 @@ import Utils.LinkedList;
 import java.util.ArrayList;
 
 public class Module {
-    public LinkedList<Function> functions;
+    public ArrayList<Function> functions;
     public LinkedList<GlobalVariable> globalVariables;
 
     public Module() {
-        this.functions = new LinkedList<>();
+        this.functions = new ArrayList<>();
         this.globalVariables = new LinkedList<>();
     }
 
     public void addFunctions(Function function) {
-        functions.append(function);
+        functions.add(function);
     }
 
     public void addGlobalVariable(GlobalVariable globalVariable) {
