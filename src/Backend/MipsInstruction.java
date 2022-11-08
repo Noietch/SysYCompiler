@@ -6,12 +6,8 @@ public class MipsInstruction {
     public String instr;
 
     public String reg1;
-
     public String reg2;
-
     public String reg3;
-
-
     public String offset;
 
     public MipsInstruction(String label) {

@@ -5,6 +5,7 @@ import Backend.Mem.VirtualRegister;
 import Middle.IRElement.Basic.*;
 import Middle.IRElement.Basic.Module;
 import Middle.IRElement.Instructions.*;
+import Middle.IRElement.Type.ValueType;
 import Middle.IRElement.Value;
 
 import java.util.ArrayList;
@@ -44,21 +45,20 @@ public class CodeGen {
             if (function.define) {
                 curFunc = function;
                 genFunction(function);
-            }
-            else genDefine(function);
+            } else genDefine(function);
         }
     }
 
-    private void genDefine(Function function){
+    private void genDefine(Function function) {
         mipsCode.add(new MipsInstruction(function.name));
-        if(function.name.equals("putch"))
-            mipsCode.add(new MipsInstruction("addiu","$v0","$zero","11"));
-        if(function.name.equals("putint"))
-            mipsCode.add(new MipsInstruction("addiu","$v0","$zero","1"));
-        if(function.name.equals("getint"))
-            mipsCode.add(new MipsInstruction("addiu","$v0","$zero","5"));
-        mipsCode.add(new MipsInstruction("syscall",""));
-        mipsCode.add(new MipsInstruction("jr","$ra"));
+        if (function.name.equals("putch"))
+            mipsCode.add(new MipsInstruction("addiu", "$v0", "$zero", "11"));
+        if (function.name.equals("putint"))
+            mipsCode.add(new MipsInstruction("addiu", "$v0", "$zero", "1"));
+        if (function.name.equals("getint"))
+            mipsCode.add(new MipsInstruction("addiu", "$v0", "$zero", "5"));
+        mipsCode.add(new MipsInstruction("syscall", ""));
+        mipsCode.add(new MipsInstruction("jr", "$ra"));
     }
 
     private void genFunction(Function function) {
@@ -100,8 +100,19 @@ public class CodeGen {
 
     private void genAllocInstr(AllocateInstruction allocateInstruction) {
         String virtualNum = allocateInstruction.value1.getName();
-        this.regAllocator.getStackReg(virtualNum); // 分配寄存器
-        mipsCode.add(new MipsInstruction("addiu", "$sp", "$sp", "-4"));
+        ValueType.Type type = allocateInstruction.value1.getInnerType();
+        // 如果是数组，则计算空间后分配
+        if (allocateInstruction.value1.getInnerType() instanceof ValueType.ArrayType) {
+            ArrayList<Integer> dim = type.getDim();
+            int memSize = 1;
+            for (int i = 0; i < dim.size(); i++) memSize *= dim.get(0);
+            for (int i = 0; i < memSize; i++) regAllocator.getStackReg(virtualNum, memSize);
+            mipsCode.add(new MipsInstruction("addiu", "$sp", "$sp", "-" + 4 * memSize));
+        } else {
+            // 如果是整数,或者是一个地址，则直接分配空间
+            this.regAllocator.getStackReg(virtualNum); // 分配栈空间
+            mipsCode.add(new MipsInstruction("addiu", "$sp", "$sp", "-4"));
+        }
     }
 
     private RealRegister lookup(Value virtual) {
@@ -246,6 +257,12 @@ public class CodeGen {
         } else mipsCode.add(new MipsInstruction("j", label_true));
     }
 
+    // 对于数组的访问, 由于llvmir 的特殊结构, 我们需要直接进行一个,对于getElementPtr的单独处理
+    private void genGetElementPtr(GetElementPtr getElementPtr) {
+
+    }
+
+
     private void genInstruction(BaseInstruction instruction) {
         if (instruction instanceof AllocateInstruction) genAllocInstr((AllocateInstruction) instruction);
         if (instruction instanceof LoadInstruction) genLoadInstr((LoadInstruction) instruction);
@@ -255,5 +272,6 @@ public class CodeGen {
         if (instruction instanceof CallInstruction) genCallInstr((CallInstruction) instruction);
         if (instruction instanceof IcmpInstruction) genIcmpInstr((IcmpInstruction) instruction);
         if (instruction instanceof BranchInstruction) genBranchInstruction((BranchInstruction) instruction);
+        if (instruction instanceof GetElementPtr) genGetElementPtr((GetElementPtr) instruction);
     }
 }

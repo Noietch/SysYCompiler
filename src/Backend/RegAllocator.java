@@ -5,7 +5,6 @@ import Backend.Mem.VirtualRegister;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 public class RegAllocator {
     public int stackPointer = 0;
@@ -33,6 +32,10 @@ public class RegAllocator {
         stackPointer++;
     }
 
+    public void getStackReg(String virtualNum, int memSize){
+        virtual2Stack.put(new VirtualRegister(virtualNum), stackPointer);
+        stackPointer += memSize;
+    }
     public void getStackReg(String virtualNum) {
         virtual2Stack.put(new VirtualRegister(virtualNum), stackPointer++);
     }
