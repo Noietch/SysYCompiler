@@ -14,9 +14,10 @@ public class Compiler {
             TokenHandler tokenHandler = new TokenHandler(p.getTokenArrayList());
             IRBuilder irBuilder = new IRBuilder(tokenHandler.getSyntaxTreeRoot());
             String ir = irBuilder.getIR();
+            FileUtils.toFile(ir,"llvm_ir.txt");
+
             CodeGen mipsGen = new CodeGen(irBuilder.currentModule);
             String mips = mipsGen.genMips();
-            FileUtils.toFile(ir,"llvm_ir.txt");
             FileUtils.toFile(mips,"mips.txt");
         } catch (IOException e) {
             throw new RuntimeException(e);

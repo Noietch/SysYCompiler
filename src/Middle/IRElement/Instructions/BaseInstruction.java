@@ -12,6 +12,8 @@ public class BaseInstruction extends Value {
 
     public Op op;
 
+    public MipsHelper mipsHelper = new MipsHelper(MipsHelper.Type.normal);
+
     public BaseInstruction() {}
 
     public BaseInstruction(User result, Value value1, Value value2, Op op) {

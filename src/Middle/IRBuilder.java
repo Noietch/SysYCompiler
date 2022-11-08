@@ -192,6 +192,7 @@ public class IRBuilder {
                     GetElementPtr getElementPtr = new GetElementPtr(firstAddr, temp, new Constant("0"), new Constant("0"));
                     currentBasicBlock.appendInst(getElementPtr);
                     temp = firstAddr;
+                    getElementPtr.mipsHelper.setInit();
                 }
                 // 初值
                 currentPos = 0;
@@ -289,16 +290,17 @@ public class IRBuilder {
                 // 分配空间
                 AllocateInstruction allocateInstruction = new AllocateInstruction(arrayPointer, param);
                 currentBasicBlock.appendInst(allocateInstruction);
-                // 获取数组首地址指针
-                Value firstAddr = null;
-                Value temp = arrayPointer;
-                for (ConstExp ignored : varDef.constExps) {
-                    firstAddr = new Value(getRegister(), new ValueType.Pointer(temp.getInnerType().getType()));
-                    GetElementPtr getElementPtr = new GetElementPtr(firstAddr, temp, new Constant("0"), new Constant("0"));
-                    currentBasicBlock.appendInst(getElementPtr);
-                    temp = firstAddr;
-                }
                 if (varDef.initVal != null) {
+                    // 获取数组首地址指针
+                    Value firstAddr = null;
+                    Value temp = arrayPointer;
+                    for (ConstExp ignored : varDef.constExps) {
+                        firstAddr = new Value(getRegister(), new ValueType.Pointer(temp.getInnerType().getType()));
+                        GetElementPtr getElementPtr = new GetElementPtr(firstAddr, temp, new Constant("0"), new Constant("0"));
+                        currentBasicBlock.appendInst(getElementPtr);
+                        temp = firstAddr;
+                        getElementPtr.mipsHelper.setInit();
+                    }
                     // 初值
                     currentPos = 0;
                     visitInitVal(firstAddr, varDef.initVal, true);

@@ -1,6 +1,8 @@
 package Backend;
 
+import Backend.Mem.MemElem;
 import Backend.Mem.RealRegister;
+import Backend.Mem.Stack;
 import Backend.Mem.VirtualRegister;
 
 import java.util.ArrayList;
@@ -8,9 +10,8 @@ import java.util.HashMap;
 
 public class RegAllocator {
     public int stackPointer = 0;
-    public HashMap<VirtualRegister, Integer> virtual2Stack = new HashMap<>();
+    public HashMap<VirtualRegister, MemElem> virtual2Stack = new HashMap<>();
     public HashMap<VirtualRegister, RealRegister> virtual2Temp = new HashMap<>();
-
     public ArrayList<RealRegister> tempRegPool = new ArrayList<>();
     public int[] temRegUseMap;
 
@@ -32,16 +33,20 @@ public class RegAllocator {
         stackPointer++;
     }
 
-    public void getStackReg(String virtualNum, int memSize){
-        virtual2Stack.put(new VirtualRegister(virtualNum), stackPointer);
-        stackPointer += memSize;
-    }
-    public void getStackReg(String virtualNum) {
-        virtual2Stack.put(new VirtualRegister(virtualNum), stackPointer++);
+    public void repeatReg(String virtualNum, int memSize) {
+        virtual2Stack.put(new VirtualRegister(virtualNum), new Stack(stackPointer - memSize));
     }
 
-    public void freeTempReg(String virtual, RealRegister tempReg) {
-        virtual2Temp.remove(new VirtualRegister(virtual));
+    public void getStackReg(String virtualNum, int memSize) {
+        virtual2Stack.put(new VirtualRegister(virtualNum), new Stack(stackPointer));
+        stackPointer += memSize;
+    }
+
+    public void getStackReg(String virtualNum) {
+        virtual2Stack.put(new VirtualRegister(virtualNum), new Stack(stackPointer++));
+    }
+
+    public void freeTempReg(RealRegister tempReg) {
         int num = tempReg.toString().charAt(2) - '0';
         temRegUseMap[num] = 0;
     }
@@ -57,19 +62,32 @@ public class RegAllocator {
         throw new RuntimeException();
     }
 
-    public void clearStack() {
+    public void clear() {
         stackPointer = 0;
         virtual2Stack.clear();
+        virtual2Temp.clear();
     }
 
-    public String lookUpStack(String virtualNum) {
+    public MemElem lookUpStackInv(String virtualNum) {
+        if (!virtual2Stack.containsKey(new VirtualRegister(virtualNum)))
+            throw new RuntimeException("no the virtual num");
+        return virtual2Stack.get(new VirtualRegister(virtualNum));
+    }
+
+    public MemElem lookUpStack(String virtualNum) {
         if (!virtual2Stack.containsKey(new VirtualRegister(virtualNum))) return null;
-        int stackPos = virtual2Stack.get(new VirtualRegister(virtualNum));
-        return Integer.toString((stackPointer - stackPos - 1) * 4);
+        MemElem memElem = virtual2Stack.get(new VirtualRegister(virtualNum));
+        if (memElem instanceof Stack) {
+            Stack stack = (Stack) memElem;
+            return new Stack(stackPointer - stack.stackPos - 1);
+        } else return memElem;
     }
 
     public RealRegister lookUpTemp(String virtualNum) {
         if (!virtual2Temp.containsKey(new VirtualRegister(virtualNum))) return null;
-        return virtual2Temp.get(new VirtualRegister(virtualNum));
+        RealRegister realRegister = virtual2Temp.get(new VirtualRegister(virtualNum));
+        // 暂时的方案
+        if (virtualNum.charAt(1) == 't' && temRegUseMap[realRegister.getNum()] == 0) return null;
+        return realRegister;
     }
 }
