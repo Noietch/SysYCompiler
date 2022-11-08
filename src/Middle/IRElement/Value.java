@@ -63,8 +63,6 @@ public class Value extends LinkedListNode {
     }
 
     // ====================== 添加数组常量 ============================
-
-
     public void setConst() {
         isConst = true;
     }
