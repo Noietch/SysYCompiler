@@ -44,7 +44,6 @@ public class MipsInstruction {
         this.reg1 = reg1;
     }
 
-
     @Override
     public String toString() {
         // 如果是个标志

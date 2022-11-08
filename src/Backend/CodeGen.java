@@ -14,6 +14,8 @@ public class CodeGen {
     public Module irModule;
 
     public Function curFunc;
+
+    public IcmpInstruction curIcmp;
     public RegAllocator regAllocator;
     public ArrayList<MipsInstruction> mipsCode;
 
@@ -43,7 +45,20 @@ public class CodeGen {
                 curFunc = function;
                 genFunction(function);
             }
+            else genDefine(function);
         }
+    }
+
+    private void genDefine(Function function){
+        mipsCode.add(new MipsInstruction(function.name));
+        if(function.name.equals("putch"))
+            mipsCode.add(new MipsInstruction("addiu","$v0","$zero","11"));
+        if(function.name.equals("putint"))
+            mipsCode.add(new MipsInstruction("addiu","$v0","$zero","1"));
+        if(function.name.equals("getint"))
+            mipsCode.add(new MipsInstruction("addiu","$v0","$zero","5"));
+        mipsCode.add(new MipsInstruction("syscall",""));
+        mipsCode.add(new MipsInstruction("jr","$ra"));
     }
 
     private void genFunction(Function function) {
@@ -77,7 +92,7 @@ public class CodeGen {
 
     private void genBlock(BasicBlock block, boolean firstBlock) {
         if (!firstBlock)
-            mipsCode.add(new MipsInstruction(block.parent.name + "_label_" + block.name));
+            mipsCode.add(new MipsInstruction(curFunc.name + "_label_" + block.name));
         for (BaseInstruction instruction : block.instructions) {
             genInstruction(instruction);
         }
@@ -139,7 +154,6 @@ public class CodeGen {
         }
         regAllocator.clearStack();
     }
-
 
     private void genBinaryInstr(BinaryInstruction binaryInstruction) {
         String Operator = "";
@@ -208,14 +222,28 @@ public class CodeGen {
         }
     }
 
-    private void genIcmpInstr(IcmpInstruction icmpInstruction){
+    // mips里的比较分支是一条语句, 我们需要把ir的两条语句合并成一条
+    // ir里的这个比较和分支是连在一起的, 所以我们可以设个全局变量, 一起处理。
+    private void genIcmpInstr(IcmpInstruction icmpInstruction) {
+        curIcmp = icmpInstruction;
+    }
+
+    private void genBranchInstruction(BranchInstruction branchInstruction) {
         String Operator = "";
-        if (icmpInstruction.op.type.equals(Op.Type.eq)) Operator = "eq";
-        if (icmpInstruction.op.type.equals(Op.Type.ne)) Operator = "ne";
-        if (icmpInstruction.op.type.equals(Op.Type.sge)) Operator = "ge";
-        if (icmpInstruction.op.type.equals(Op.Type.sgt)) Operator = "gt";
-        if (icmpInstruction.op.type.equals(Op.Type.sle)) Operator = "sle";
-        if (icmpInstruction.op.type.equals(Op.Type.slt)) Operator = "slt";
+        if (curIcmp.op.type.equals(Op.Type.eq)) Operator = "beq";
+        if (curIcmp.op.type.equals(Op.Type.ne)) Operator = "bne";
+        if (curIcmp.op.type.equals(Op.Type.sge)) Operator = "bge";
+        if (curIcmp.op.type.equals(Op.Type.sgt)) Operator = "bgt";
+        if (curIcmp.op.type.equals(Op.Type.sle)) Operator = "ble";
+        if (curIcmp.op.type.equals(Op.Type.slt)) Operator = "blt";
+        RealRegister tempReg1 = lookup(curIcmp.value1);
+        RealRegister tempReg2 = lookup(curIcmp.value2);
+        String label_true = curFunc.name + "_label_" + branchInstruction.value1.name;
+        if (branchInstruction.value2 != null) {
+            String label_false = curFunc.name + "_label_" + branchInstruction.value2.name;
+            mipsCode.add(new MipsInstruction(Operator, tempReg1.toString(), tempReg2.toString(), label_true));
+            mipsCode.add(new MipsInstruction("j", label_false));
+        } else mipsCode.add(new MipsInstruction("j", label_true));
     }
 
     private void genInstruction(BaseInstruction instruction) {
@@ -226,5 +254,6 @@ public class CodeGen {
         if (instruction instanceof RetInstruction) genReturn((RetInstruction) instruction);
         if (instruction instanceof CallInstruction) genCallInstr((CallInstruction) instruction);
         if (instruction instanceof IcmpInstruction) genIcmpInstr((IcmpInstruction) instruction);
+        if (instruction instanceof BranchInstruction) genBranchInstruction((BranchInstruction) instruction);
     }
 }
