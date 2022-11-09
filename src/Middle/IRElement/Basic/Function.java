@@ -50,6 +50,10 @@ public class Function extends Value {
         isReturn = true;
     }
 
+    public boolean isMain(){
+        return name.equals("main");
+    }
+
     @Override
     public String toString() {
         if (define) return define();

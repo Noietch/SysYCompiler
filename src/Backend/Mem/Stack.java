@@ -1,6 +1,6 @@
 package Backend.Mem;
 
-public class Stack extends MemElem{
+public class Stack {
     public int stackPos;
 
     public Stack(int stackPos) {

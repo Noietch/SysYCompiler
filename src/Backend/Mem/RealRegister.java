@@ -1,6 +1,6 @@
 package Backend.Mem;
 
-public class RealRegister extends MemElem{
+public class RealRegister {
     String name;
 
     public RealRegister(String name) {

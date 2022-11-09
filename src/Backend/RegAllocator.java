@@ -1,6 +1,5 @@
 package Backend;
 
-import Backend.Mem.MemElem;
 import Backend.Mem.RealRegister;
 import Backend.Mem.Stack;
 import Backend.Mem.VirtualRegister;
@@ -9,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class RegAllocator {
+
     public int stackPointer = 0;
     public HashMap<VirtualRegister, Stack> virtual2Stack = new HashMap<>();
     public HashMap<VirtualRegister, RealRegister> virtual2Temp = new HashMap<>();
@@ -25,10 +25,6 @@ public class RegAllocator {
         initTempRegPool();
     }
 
-    public String getCurStack() {
-        return Integer.toString(stackPointer * 4);
-    }
-
     public void getStackReg() {
         stackPointer++;
     }
@@ -42,8 +38,10 @@ public class RegAllocator {
         stackPointer += memSize;
     }
 
-    public void getStackReg(String virtualNum) {
+    public Stack getStackReg(String virtualNum) {
+        Stack res = new Stack(stackPointer);
         virtual2Stack.put(new VirtualRegister(virtualNum), new Stack(stackPointer++));
+        return res;
     }
 
     public void freeTempReg(RealRegister tempReg) {
@@ -68,23 +66,16 @@ public class RegAllocator {
         virtual2Temp.clear();
     }
 
-    public Stack lookUpStackInv(String virtualNum) {
-        if (!virtual2Stack.containsKey(new VirtualRegister(virtualNum)))
-            throw new RuntimeException("no the virtual num");
-        return virtual2Stack.get(new VirtualRegister(virtualNum));
-    }
 
     public Stack lookUpStack(String virtualNum) {
-        if (!virtual2Stack.containsKey(new VirtualRegister(virtualNum))) return null;
-        Stack stack = virtual2Stack.get(new VirtualRegister(virtualNum));
-        return new Stack(stackPointer - stack.stackPos - 1);
+        return virtual2Stack.getOrDefault(new VirtualRegister(virtualNum), null);
     }
 
     public RealRegister lookUpTemp(String virtualNum) {
         if (!virtual2Temp.containsKey(new VirtualRegister(virtualNum))) return null;
         RealRegister realRegister = virtual2Temp.get(new VirtualRegister(virtualNum));
         // 暂时的方案
-        if (virtualNum.charAt(1) == 't' && temRegUseMap[realRegister.getNum()] == 0) return null;
+        if (realRegister.toString().charAt(1) == 't' && temRegUseMap[realRegister.getNum()] == 0) return null;
         return realRegister;
     }
 }
