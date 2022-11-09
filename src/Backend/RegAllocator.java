@@ -10,13 +10,13 @@ import java.util.HashMap;
 
 public class RegAllocator {
     public int stackPointer = 0;
-    public HashMap<VirtualRegister, MemElem> virtual2Stack = new HashMap<>();
+    public HashMap<VirtualRegister, Stack> virtual2Stack = new HashMap<>();
     public HashMap<VirtualRegister, RealRegister> virtual2Temp = new HashMap<>();
     public ArrayList<RealRegister> tempRegPool = new ArrayList<>();
     public int[] temRegUseMap;
 
     public void initTempRegPool() {
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 5; i++)
             tempRegPool.add(new RealRegister("$t" + i));
         temRegUseMap = new int[tempRegPool.size()];
     }
@@ -68,19 +68,16 @@ public class RegAllocator {
         virtual2Temp.clear();
     }
 
-    public MemElem lookUpStackInv(String virtualNum) {
+    public Stack lookUpStackInv(String virtualNum) {
         if (!virtual2Stack.containsKey(new VirtualRegister(virtualNum)))
             throw new RuntimeException("no the virtual num");
         return virtual2Stack.get(new VirtualRegister(virtualNum));
     }
 
-    public MemElem lookUpStack(String virtualNum) {
+    public Stack lookUpStack(String virtualNum) {
         if (!virtual2Stack.containsKey(new VirtualRegister(virtualNum))) return null;
-        MemElem memElem = virtual2Stack.get(new VirtualRegister(virtualNum));
-        if (memElem instanceof Stack) {
-            Stack stack = (Stack) memElem;
-            return new Stack(stackPointer - stack.stackPos - 1);
-        } else return memElem;
+        Stack stack = virtual2Stack.get(new VirtualRegister(virtualNum));
+        return new Stack(stackPointer - stack.stackPos - 1);
     }
 
     public RealRegister lookUpTemp(String virtualNum) {

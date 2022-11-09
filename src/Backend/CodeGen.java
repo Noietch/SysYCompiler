@@ -20,8 +20,6 @@ public class CodeGen {
 
     public int allocStage; // 目前初始化的哪个阶段，2就是二维数组，1就是一维数组
     public int curMemSize;  // 目前正在初始化数组的大小
-    public Value curArray;  // 目前的数组
-    public RealRegister curOffset = null; // 目前数组的偏移量
     public RegAllocator regAllocator;
     public ArrayList<MipsInstruction> mipsCode;
 
@@ -141,13 +139,11 @@ public class CodeGen {
 
     private void genStoreInstr(StoreInstruction storeInstruction) {
         RealRegister tempReg = lookup(storeInstruction.value1);
-        MemElem memElem = regAllocator.lookUpStack(storeInstruction.value2.getName());
-        if(memElem instanceof Stack){
-            Stack stackReg = (Stack) memElem;
+        Stack stackReg = regAllocator.lookUpStack(storeInstruction.value2.getName());
+        if (stackReg != null)
             mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), "$sp", stackReg.toString()));
-        }
         else {
-            RealRegister realRegister = (RealRegister) memElem;
+            RealRegister realRegister = regAllocator.lookUpTemp(storeInstruction.value2.getName());
             mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), realRegister.toString(), "0"));
             regAllocator.freeTempReg(realRegister);
         }
@@ -155,15 +151,14 @@ public class CodeGen {
     }
 
     private void genLoadInstr(LoadInstruction loadInstruction) {
-        MemElem memElem = regAllocator.lookUpStack(loadInstruction.value1.getName());
+        Stack stackReg = regAllocator.lookUpStack(loadInstruction.value1.getName());
         RealRegister tempReg = regAllocator.getTempReg(loadInstruction.result.getName());
-        if(memElem instanceof Stack){
-            Stack stackReg = (Stack) memElem;
+        if (stackReg != null)
             mipsCode.add(new MipsInstruction(true, "lw", tempReg.toString(), "$sp", stackReg.toString()));
-        }
         else {
-            RealRegister realRegister = (RealRegister) memElem;
+            RealRegister realRegister = regAllocator.lookUpTemp(loadInstruction.value1.getName());
             mipsCode.add(new MipsInstruction(true, "lw", tempReg.toString(), realRegister.toString(), "0"));
+            // 每次访问数组都是重新从内存里拿，所以这个寄存器是可以free掉的
             regAllocator.freeTempReg(realRegister);
         }
     }
@@ -250,7 +245,7 @@ public class CodeGen {
             String virtualNum = callInstruction.value2.getName();
             this.regAllocator.getStackReg(virtualNum); // 分配寄存器
             mipsCode.add(new MipsInstruction("addiu", "$sp", "$sp", "-4"));
-            Stack stack = (Stack) regAllocator.lookUpStack(callInstruction.value2.getName());
+            Stack stack = regAllocator.lookUpStack(callInstruction.value2.getName());
             mipsCode.add(new MipsInstruction(true, "sw", "$v0", "$sp", stack.toString()));
         }
     }
@@ -262,22 +257,28 @@ public class CodeGen {
     }
 
     private void genBranchInstruction(BranchInstruction branchInstruction) {
-        String Operator = "";
-        if (curIcmp.op.type.equals(Op.Type.eq)) Operator = "beq";
-        if (curIcmp.op.type.equals(Op.Type.ne)) Operator = "bne";
-        if (curIcmp.op.type.equals(Op.Type.sge)) Operator = "bge";
-        if (curIcmp.op.type.equals(Op.Type.sgt)) Operator = "bgt";
-        if (curIcmp.op.type.equals(Op.Type.sle)) Operator = "ble";
-        if (curIcmp.op.type.equals(Op.Type.slt)) Operator = "blt";
-        RealRegister tempReg1 = lookup(curIcmp.value1);
-        RealRegister tempReg2 = lookup(curIcmp.value2);
-        String label_true = curFunc.name + "_label_" + branchInstruction.value1.name;
         if (branchInstruction.value2 != null) {
+            String Operator = "";
+            if (curIcmp.op.type.equals(Op.Type.eq)) Operator = "beq";
+            if (curIcmp.op.type.equals(Op.Type.ne)) Operator = "bne";
+            if (curIcmp.op.type.equals(Op.Type.sge)) Operator = "bge";
+            if (curIcmp.op.type.equals(Op.Type.sgt)) Operator = "bgt";
+            if (curIcmp.op.type.equals(Op.Type.sle)) Operator = "ble";
+            if (curIcmp.op.type.equals(Op.Type.slt)) Operator = "blt";
+            RealRegister tempReg1 = lookup(curIcmp.value1);
+            RealRegister tempReg2 = lookup(curIcmp.value2);
+            String label_true = curFunc.name + "_label_" + branchInstruction.value1.name;
             String label_false = curFunc.name + "_label_" + branchInstruction.value2.name;
             mipsCode.add(new MipsInstruction(Operator, tempReg1.toString(), tempReg2.toString(), label_true));
             mipsCode.add(new MipsInstruction("j", label_false));
-        } else mipsCode.add(new MipsInstruction("j", label_true));
+            regAllocator.freeTempReg(tempReg1);
+            regAllocator.freeTempReg(tempReg2);
+        } else {
+            String label_true = curFunc.name + "_label_" + branchInstruction.value1.name;
+            mipsCode.add(new MipsInstruction("j", label_true));
+        }
     }
+
     // 对于数组的访问, 由于llvmir 的特殊结构, 我们需要直接进行一个,对于getElementPtr的单独处理
     // 伏笔一：在llvm中我每次初始化数组之后会直接给他分配一个指针，这个指针是首地址，后面我们需要用的时候用的是这个指针
     // 这导致我们在alloc阶段的符号表是有问题的，我们需要记录一个地址两次
@@ -290,66 +291,56 @@ public class CodeGen {
         // 这就说明用的是首地址，那么就是初始化里的东西,这里需要的就是修改字典
         else if (getElementPtr.bound2 == null) {
             RealRegister temReg = regAllocator.lookUpTemp(getElementPtr.value2.getName());
-            if(temReg == null){
+            if (temReg == null) {
                 // 如果数组不是参数，而且这种情况只会出现在初始化
                 int offset = Integer.parseInt(getElementPtr.bound1.name);
-                Stack stack = (Stack) regAllocator.lookUpStackInv(getElementPtr.value2.getName());
+                Stack stack = regAllocator.lookUpStackInv(getElementPtr.value2.getName());
                 regAllocator.virtual2Stack.put(new VirtualRegister(getElementPtr.value1.getName()), stack.offset(offset));
-            }
-            else {
+            } else {
                 // 如果数组是个参数，那么就直接是存在寄存器里的，但是这里需要把数组地址算出来
                 // 如果是一维数组
                 RealRegister arrOffset = lookup(getElementPtr.bound1);
                 RealRegister array = lookup(getElementPtr.value2);
                 // array 加法之后就是数组地址
-                mipsCode.add(new MipsInstruction("mul",arrOffset.toString(),arrOffset.toString(),"4"));
-                mipsCode.add(new MipsInstruction("add",array.toString(),array.toString(),arrOffset.toString()));
-                regAllocator.virtual2Stack.put(new VirtualRegister(getElementPtr.value1.getName()), array);
+                mipsCode.add(new MipsInstruction("mul", arrOffset.toString(), arrOffset.toString(), "4"));
+                mipsCode.add(new MipsInstruction("add", array.toString(), array.toString(), arrOffset.toString()));
+                regAllocator.virtual2Temp.put(new VirtualRegister(getElementPtr.value1.getName()), array);
             }
         } else {
             // 一般使用数组的方法，就是使用一开始申请的那个虚拟寄存器
             ValueType.Type type = getElementPtr.value2.getInnerType();
             // 如果是已经降维到了一维数组那么就直接算offset
             if (type.getType() == ValueType.i32) {
-                // 计算出offset的寄存器
-                if(curOffset == null) {
-                    // 如果是一维数组
-                    curArray = getElementPtr.value2;
-                    curOffset = lookup(getElementPtr.bound2);
-                }
-                else {
-                    // 如果是二维数组
-                    mipsCode.add(new MipsInstruction("add", curOffset.toString(), curOffset.toString(), getElementPtr.bound1.name));
-                }
-                // 地址对齐
+                // 首先直接把数组的地址加载进来
+                String array = getElementPtr.value2.getName();
+                Stack stack = regAllocator.lookUpStack(array);
+                RealRegister curOffset = lookup(getElementPtr.bound2);
                 mipsCode.add(new MipsInstruction("mul", curOffset.toString(), curOffset.toString(), "4"));
-                // 加载这个把数组对应的首地址指针加载到临时寄存器中
-                // 申请一个寄存器,加载首地址
-                RealRegister tempReg = regAllocator.getTempReg("temp");
-                Stack stack = (Stack) regAllocator.lookUpStack(curArray.getName());
-                mipsCode.add(new MipsInstruction("add",tempReg.toString(),"$sp",stack.toString()));
-                // 把首地址和offset相加
-                mipsCode.add(new MipsInstruction("add",curOffset.toString(),curOffset.toString(),tempReg.toString()));
-                regAllocator.virtual2Stack.put(new VirtualRegister(getElementPtr.value1.getName()), curOffset);
+                // 如果一开始数组是存在内存里的，那就是一维数组
+                if (stack != null) {
+                    RealRegister tempReg = regAllocator.getTempReg("temp");
+                    mipsCode.add(new MipsInstruction("add", tempReg.toString(), "$sp", stack.toString()));
+                    mipsCode.add(new MipsInstruction("add", curOffset.toString(), curOffset.toString(), tempReg.toString()));
+                    regAllocator.freeTempReg(tempReg);
+                } else {
+                    RealRegister realRegister = regAllocator.lookUpTemp(array);
+                    mipsCode.add(new MipsInstruction("add", curOffset.toString(), curOffset.toString(), realRegister.toString()));
+                }
                 regAllocator.virtual2Temp.put(new VirtualRegister(getElementPtr.value1.getName()), curOffset);
-                // 释放寄存器, 清空offset
-                regAllocator.freeTempReg(tempReg);
-                curOffset = null;
             } else {
                 // 首先计算偏移量
-                curArray = getElementPtr.value2;
-                curOffset = lookup(getElementPtr.bound2);
+                RealRegister curOffset = lookup(getElementPtr.bound2);
                 ValueType.ArrayType arrayType = (ValueType.ArrayType) type;
                 int secDim = arrayType.getDim().get(1);
                 mipsCode.add(new MipsInstruction("mul", curOffset.toString(), curOffset.toString(), Integer.toString(secDim)));
                 // 首先找到目前的数组的地址
-                Stack stack = (Stack) regAllocator.lookUpStack(getElementPtr.value2.getName());
+                Stack stack = regAllocator.lookUpStack(getElementPtr.value2.getName());
                 RealRegister tempReg = regAllocator.getTempReg("temp");
-                mipsCode.add(new MipsInstruction("add",tempReg.toString(),"$sp",stack.toString()));
-                // 计算数组位置
-                mipsCode.add(new MipsInstruction("add",curOffset.toString(),curOffset.toString(),tempReg.toString()));
-                // 储存寄存器到表上
+                mipsCode.add(new MipsInstruction("add", tempReg.toString(), "$sp", stack.toString()));
+                // 计算数组位置, 申请个内存
+                mipsCode.add(new MipsInstruction("add", curOffset.toString(), curOffset.toString(), tempReg.toString()));
                 regAllocator.virtual2Temp.put(new VirtualRegister(getElementPtr.value1.getName()), curOffset);
+                // 把寄存器free掉
                 regAllocator.freeTempReg(tempReg);
             }
         }
