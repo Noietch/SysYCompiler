@@ -43,7 +43,7 @@ public class MipsInstruction {
     @Override
     public String toString() {
         // 如果是个标志
-        if (Label != null) return Label + ":";
+        if (Label != null) return Label;
         // 如果操作内存
         if (isMem) return "    " + instr + " " + reg1 + " ," + offset + "(" + reg2 + ")";
         // 三个操作数

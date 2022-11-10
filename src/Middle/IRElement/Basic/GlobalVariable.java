@@ -37,6 +37,19 @@ public class GlobalVariable extends Value {
         return res.toString();
     }
 
+    @SuppressWarnings("unchecked")
+    public ArrayList<Object> flattenInitials(ValueType.ArrayType arrayType, ArrayList<Object> init) {
+        ArrayList<Object> res = new ArrayList<>();
+        for (int i = 0; i < arrayType.size(); i++) {
+            Object temp = init.get(i);
+            if (((ArrayList<Object>) temp).get(0) instanceof Integer)
+                res.add(((ArrayList<Object>) temp).get(0));
+            else
+                res.addAll(flattenInitials((ValueType.ArrayType) arrayType.getType(), (ArrayList<Object>) temp));
+        }
+        return res;
+    }
+
     @Override
     public String toString() {
         if (isConst) {

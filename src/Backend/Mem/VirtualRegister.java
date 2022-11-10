@@ -1,7 +1,8 @@
 package Backend.Mem;
 
 public class VirtualRegister {
-    String name;
+    public static VirtualRegister None = new VirtualRegister("None");
+    public String name;
 
     public VirtualRegister(String name) {
         this.name = name;

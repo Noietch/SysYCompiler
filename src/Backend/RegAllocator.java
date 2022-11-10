@@ -3,22 +3,42 @@ package Backend;
 import Backend.Mem.RealRegister;
 import Backend.Mem.Stack;
 import Backend.Mem.VirtualRegister;
+import Utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+
 
 public class RegAllocator {
-
+    static public String[] RegName = {
+            "$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3",
+            "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$s0",
+            "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$t8", "$t9",
+            "$k0", "$k1", "$gp", "$sp", "$fp", "$ra"
+    };
     public int stackPointer = 0;
+    public HashMap<String,String> virtual2Global = new HashMap<>();
     public HashMap<VirtualRegister, Stack> virtual2Stack = new HashMap<>();
-    public HashMap<VirtualRegister, RealRegister> virtual2Temp = new HashMap<>();
+    public ArrayList<Pair> Recorder = new ArrayList<>();
     public ArrayList<RealRegister> tempRegPool = new ArrayList<>();
-    public int[] temRegUseMap;
+    public VirtualRegister[] temRegUseMap = new VirtualRegister[RegName.length];
+    public int tempNum = 1;
+
+    public void record(RealRegister realRegister, Stack stack) {
+        Recorder.add(new Pair(realRegister, stack));
+    }
+
+    public void recordClear() {
+        Recorder.clear();
+    }
 
     public void initTempRegPool() {
-        for (int i = 0; i < 5; i++)
-            tempRegPool.add(new RealRegister("$t" + i));
-        temRegUseMap = new int[tempRegPool.size()];
+        for (int i = 0; i < RegName.length; i++) {
+            tempRegPool.add(new RealRegister(RegName[i]));
+            temRegUseMap[i] = VirtualRegister.None;
+        }
     }
 
     public RegAllocator() {
@@ -45,15 +65,19 @@ public class RegAllocator {
     }
 
     public void freeTempReg(RealRegister tempReg) {
-        int num = tempReg.toString().charAt(2) - '0';
-        temRegUseMap[num] = 0;
+        temRegUseMap[tempReg.getNum()] = VirtualRegister.None;
+    }
+
+    public String getTempNum() {
+        return "temp" + tempNum++;
     }
 
     public RealRegister getTempReg(String virtualNum) {
-        for (int i = 0; i < temRegUseMap.length; i++) {
-            if (temRegUseMap[i] == 0) {
-                virtual2Temp.put(new VirtualRegister(virtualNum), tempRegPool.get(i));
-                temRegUseMap[i] = 1;
+        // TODO 寄存器分配
+        for (int i = 8; i < 28; i++) {
+            if (temRegUseMap[i] == VirtualRegister.None) {
+                VirtualRegister virtualRegister = new VirtualRegister(virtualNum);
+                temRegUseMap[i] = virtualRegister;
                 return tempRegPool.get(i);
             }
         }
@@ -63,7 +87,7 @@ public class RegAllocator {
     public void clear() {
         stackPointer = 0;
         virtual2Stack.clear();
-        virtual2Temp.clear();
+        Arrays.fill(temRegUseMap, VirtualRegister.None);
     }
 
 
@@ -71,11 +95,21 @@ public class RegAllocator {
         return virtual2Stack.getOrDefault(new VirtualRegister(virtualNum), null);
     }
 
+    public boolean lookUpGlobal(String global) {
+        return virtual2Global.containsKey(global);
+    }
+
     public RealRegister lookUpTemp(String virtualNum) {
-        if (!virtual2Temp.containsKey(new VirtualRegister(virtualNum))) return null;
-        RealRegister realRegister = virtual2Temp.get(new VirtualRegister(virtualNum));
-        // 暂时的方案
-        if (realRegister.toString().charAt(1) == 't' && temRegUseMap[realRegister.getNum()] == 0) return null;
-        return realRegister;
+        RealRegister res = null;
+        for (int i = 0; i < temRegUseMap.length; i++) {
+            if (temRegUseMap[i].name.equals(virtualNum)) {
+                res = tempRegPool.get(i);
+            }
+        }
+        return res;
+    }
+
+    public VirtualRegister temp2Virtual(int num) {
+        return temRegUseMap[num];
     }
 }
