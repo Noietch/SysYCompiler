@@ -8,7 +8,6 @@ import Utils.Pair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 
 
 public class RegAllocator {
@@ -18,13 +17,23 @@ public class RegAllocator {
             "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$t8", "$t9",
             "$k0", "$k1", "$gp", "$sp", "$fp", "$ra"
     };
+    public int prevPointer = 0;
     public int stackPointer = 0;
-    public HashMap<String,String> virtual2Global = new HashMap<>();
+    public HashMap<String, String> virtual2Global = new HashMap<>();
     public HashMap<VirtualRegister, Stack> virtual2Stack = new HashMap<>();
     public ArrayList<Pair> Recorder = new ArrayList<>();
     public ArrayList<RealRegister> tempRegPool = new ArrayList<>();
     public VirtualRegister[] temRegUseMap = new VirtualRegister[RegName.length];
     public int tempNum = 1;
+
+    public void savePointer() {
+        prevPointer = stackPointer;
+        stackPointer = 0;
+    }
+
+    public void resolvePointer() {
+        stackPointer = prevPointer;
+    }
 
     public void record(RealRegister realRegister, Stack stack) {
         Recorder.add(new Pair(realRegister, stack));
@@ -89,7 +98,6 @@ public class RegAllocator {
         virtual2Stack.clear();
         Arrays.fill(temRegUseMap, VirtualRegister.None);
     }
-
 
     public Stack lookUpStack(String virtualNum) {
         return virtual2Stack.getOrDefault(new VirtualRegister(virtualNum), null);

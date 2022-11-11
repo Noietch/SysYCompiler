@@ -17,6 +17,7 @@ public class CodeGen {
     public Module irModule;
     public Function curFunc;
 
+    private boolean firstFlag; // 记录目前的是不是第一个块儿
     public int allocStage; // 目前初始化的哪个阶段，2就是二维数组，1就是一维数组
     public int curMemSize;  // 目前正在初始化数组的大小
     public RegAllocator regAllocator;
@@ -67,38 +68,40 @@ public class CodeGen {
     }
 
     private void saveStackTop() {
-        if (!curFunc.isMain()) {
-            // 先把$fp存起来,存到寄存器，然后把$fp覆盖, 申请空间之后, 再把$fp存到内存里
-            RealRegister tempReg = regAllocator.getTempReg(regAllocator.getTempNum());
-            mipsCode.add(new MipsInstruction("add", tempReg.toString(), "$fp", "$zero"));
-            mipsCode.add(new MipsInstruction("add", "$fp", "$sp", "$zero"));
-            mipsCode.add(new MipsInstruction("addiu", "$sp", "$sp", "-4"));
-            Stack stack = regAllocator.getStackReg("$fp");
-            mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), "$fp", stack.toString()));
-            // 释放寄存器
-            regAllocator.freeTempReg(tempReg);
-        } else {
-            mipsCode.add(new MipsInstruction("add", "$fp", "$sp", "$zero"));
-        }
+        regAllocator.savePointer();
+        // 先把$fp存起来,存到寄存器，然后把$fp覆盖, 申请空间之后, 再把$fp存到内存里
+        RealRegister tempReg = regAllocator.getTempReg(regAllocator.getTempNum());
+        mipsCode.add(new MipsInstruction("add", tempReg.toString(), "$fp", "$zero"));
+        mipsCode.add(new MipsInstruction("add", "$fp", "$sp", "$zero"));
+        mipsCode.add(new MipsInstruction("addiu", "$sp", "$sp", "-4"));
+        Stack stack = regAllocator.getStackReg("$fp");
+        mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), "$fp", stack.toString()));
+        // 释放寄存器
+        regAllocator.freeTempReg(tempReg);
+        // 把$ra存起来
+        mipsCode.add(new MipsInstruction("addiu", "$sp", "$sp", "-4"));
+        stack = regAllocator.getStackReg("$ra");
+        mipsCode.add(new MipsInstruction(true, "sw", "$ra", "$fp", stack.toString()));
     }
 
     private void fixStackTop() {
         // 把$sp还原
         mipsCode.add(new MipsInstruction("add", "$sp", "$fp", "$zero"));
-        if (!curFunc.isMain()) {
-            // 把$fp还原
-            Stack stack = regAllocator.lookUpStack("$fp");
-            mipsCode.add(new MipsInstruction(true, "lw", "$fp", "$fp", stack.toString()));
-        }
+        // 把$ra还原
+        Stack stack = regAllocator.lookUpStack("$ra");
+        mipsCode.add(new MipsInstruction(true, "lw", "$ra", "$fp", stack.toString()));
+        // 把$fp还原
+        stack = regAllocator.lookUpStack("$fp");
+        mipsCode.add(new MipsInstruction(true, "lw", "$fp", "$fp", stack.toString()));
+        regAllocator.resolvePointer();
     }
 
     private void genFunction(Function function) {
         mipsCode.add(new MipsInstruction(function.name + ":"));
-        saveStackTop();
         if (!curFunc.isMain()) genFunctionParam(function.funcFParams);
-        boolean firstFlag = true;
+        firstFlag = true;
         for (BasicBlock basicBlock : function.basicBlocks) {
-            genBlock(basicBlock, firstFlag);
+            genBlock(basicBlock);
             firstFlag = false;
         }
         regAllocator.clear();
@@ -106,11 +109,6 @@ public class CodeGen {
 
     // 这个函数其实是需要调整符号表
     private void genFunctionParam(ArrayList<Value> functionParams) {
-        // 首先是把$ra存起来
-        // 分配内存
-        mipsCode.add(new MipsInstruction("addiu", "$sp", "$sp", "-4"));
-        Stack stack = regAllocator.getStackReg("$ra");
-        mipsCode.add(new MipsInstruction(true, "sw", "$ra", "$fp", stack.toString()));
         // 参数的个数——size
         int size = functionParams.size();
         // 4号寄存器是a0
@@ -119,6 +117,7 @@ public class CodeGen {
         for (int i = 4; i < size; i++)
             regAllocator.virtual2Stack.put(new VirtualRegister("%" + i), new Stack(-(size - i)));
     }
+
 
     private void genGlobalVariable(GlobalVariable globalVariable) {
         // 如果没有初始化, 那么就直接赋0值
@@ -149,31 +148,34 @@ public class CodeGen {
         regAllocator.virtual2Global.put(globalVariable.name, Integer.toString(size - 4));
     }
 
-    private void genBlock(BasicBlock block, boolean firstBlock) {
-        if (!firstBlock)
+    private void genBlock(BasicBlock block) {
+        if (!firstFlag)
             mipsCode.add(new MipsInstruction(curFunc.name + "_label_" + block.name + ":"));
+        saveStackTop();
         for (BaseInstruction instruction : block.instructions) {
             genInstruction(instruction);
         }
     }
 
-    private void genAllocInstr(AllocateInstruction allocateInstruction) {
+
+
+
+    private int genAllocInstr(AllocateInstruction allocateInstruction) {
         String virtualNum = allocateInstruction.value1.getName();
         ValueType.Type type = allocateInstruction.value1.getInnerType();
+        int size = 4;
         // 如果是数组，则计算空间后分配
         if (allocateInstruction.value1.getInnerType() instanceof ValueType.ArrayType) {
             ArrayList<Integer> dim = type.getDim();
-            curMemSize = 1;
-            for (Integer integer : dim) curMemSize *= integer;
-            regAllocator.getStackReg(allocateInstruction.value1.getName(), curMemSize);
-            mipsCode.add(new MipsInstruction("addiu", "$sp", "$sp", "-" + 4 * curMemSize));
             // 后面的初始化交给GetElem 二维数组后面就需要两个这个GetElem, 一维数组后面就需要一个这个GetElem
             allocStage = dim.size();
-        } else {
-            // 如果是整数,或者是一个地址，则直接分配空间
-            this.regAllocator.getStackReg(virtualNum); // 分配栈空间
-            mipsCode.add(new MipsInstruction("addiu", "$sp", "$sp", "-4"));
-        }
+            // 算存储大小
+            curMemSize = 1;
+            for (Integer integer : dim) curMemSize *= integer;
+            size = 4 * curMemSize;
+            regAllocator.getStackReg(allocateInstruction.value1.getName(), curMemSize);
+        } else this.regAllocator.getStackReg(virtualNum); // 如果是整数或者是一个地址，则直接分配空间
+        return size;
     }
 
     private RealRegister lookup(Value virtual) {
@@ -230,9 +232,8 @@ public class CodeGen {
     private void genReturn(RetInstruction retInstruction) {
         // 清空栈，然后还原栈指针
         if (!curFunc.name.equals("main")) {
-            // 这里需要重新加载ra
-            Stack stack = regAllocator.lookUpStack("$ra");
-            mipsCode.add(new MipsInstruction(true, "lw", "$ra", "$fp", stack.toString()));
+            // 把ra和fp还原
+            fixStackTop();
             // 把返回值赋值到v0中
             Value ret = retInstruction.value1;
             if (ret != null) {
@@ -240,8 +241,6 @@ public class CodeGen {
                 mipsCode.add(new MipsInstruction("add", "$v0", "$zero", reg.toString()));
                 regAllocator.freeTempReg(reg);
             }
-            // 执行return
-            fixStackTop();
             // 返回栈指针
             mipsCode.add(new MipsInstruction("jr", "$ra"));
         } else {
@@ -276,7 +275,6 @@ public class CodeGen {
                 mipsCode.add(new MipsInstruction("mfhi", tempRegRes.toString()));
         }
         // 将计算结果保存到$sp中 , 首先申请内存, 然后把东西存进去
-        mipsCode.add(new MipsInstruction("addiu", "$sp", "$sp", "-4"));
         Stack stack = regAllocator.getStackReg(binaryInstruction.result.getName());
         mipsCode.add(new MipsInstruction(true, "sw", tempRegRes.toString(), "$fp", stack.toString()));
         // 释放编译器
@@ -350,6 +348,7 @@ public class CodeGen {
     }
 
     private void genBranchInstruction(BranchInstruction branchInstruction) {
+        fixStackTop();
         if (branchInstruction.value2 != null) {
             RealRegister tempReg = regAllocator.lookUpTemp(branchInstruction.cond.getName());
             String label_true = curFunc.name + "_label_" + branchInstruction.value1.name;
@@ -372,6 +371,7 @@ public class CodeGen {
     // 伏笔一：在llvm中我每次初始化数组之后会直接给他分配一个指针，这个指针是首地址，后面我们需要用的时候用的是这个指针
     // 这导致我们在alloc阶段的符号表是有问题的，我们需要记录一个地址两次
     private void genGetElementPtr(GetElementPtr getElementPtr) {
+        // TODO 这里需要改
         if (getElementPtr.mipsHelper.isInit()) {
             if (allocStage > 1) allocStage--;
             else if (allocStage == 1)
