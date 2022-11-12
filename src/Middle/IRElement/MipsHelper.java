@@ -7,7 +7,7 @@ public class MipsHelper {
         loadParam
     }
 
-    int loadPos;
+    public int loadPos = -1;
     public Type type;
 
     public MipsHelper(Type type) {
