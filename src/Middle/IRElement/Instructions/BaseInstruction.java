@@ -1,6 +1,7 @@
 package Middle.IRElement.Instructions;
 
 import Middle.IRElement.Basic.Op;
+import Middle.IRElement.MipsHelper;
 import Middle.IRElement.User;
 import Middle.IRElement.Value;
 
@@ -11,8 +12,6 @@ public class BaseInstruction extends Value {
     public User result;
 
     public Op op;
-
-    public MipsHelper mipsHelper = new MipsHelper(MipsHelper.Type.normal);
 
     public BaseInstruction() {}
 

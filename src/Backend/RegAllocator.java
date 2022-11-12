@@ -83,7 +83,7 @@ public class RegAllocator {
 
     public RealRegister getTempReg(String virtualNum) {
         // TODO 寄存器分配
-        for (int i = 8; i < 28; i++) {
+        for (int i = 8; i < 18; i++) {
             if (temRegUseMap[i] == VirtualRegister.None) {
                 VirtualRegister virtualRegister = new VirtualRegister(virtualNum);
                 temRegUseMap[i] = virtualRegister;

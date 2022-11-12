@@ -74,6 +74,15 @@ public class ValueType {
             return res;
         }
 
+        public int getTotalSize(){
+            Type temp = this;
+            int size = 1;
+            while(temp instanceof ArrayType){
+                size *= ((ArrayType) temp).size;
+                temp = ((ArrayType) temp).type;
+            }
+            return size;
+        }
 
         @Override
         public String toString() {
