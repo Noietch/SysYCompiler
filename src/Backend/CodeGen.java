@@ -9,7 +9,7 @@ import Middle.IRElement.Instructions.*;
 import Middle.IRElement.Type.ValueType;
 import Middle.IRElement.Value;
 import Utils.LinkedListNode;
-import Utils.Pair;
+import Utils.Triple;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,8 +17,6 @@ import java.util.Collections;
 public class CodeGen {
     public Module irModule;
     public Function curFunc;
-
-    private boolean firstFlag; // 记录目前的是不是第一个块儿
     public int allocStage; // 目前初始化的哪个阶段，2就是二维数组，1就是一维数组
     public int curMemSize;  // 目前正在初始化数组的大小
     public RegAllocator regAllocator;
@@ -38,7 +36,10 @@ public class CodeGen {
      *
      * */
     public int preProcess(Function function) {
+        // 保存 $ra 和 $sp
         int memSize = (1 + 1) * 4;
+        // 保存现场，用了几个寄存器就保存几个,这里先用8个,这8个就是一直在的
+        memSize += 4 * 10;
         for (BasicBlock basicBlock : function.basicBlocks) {
             for (BaseInstruction instruction : basicBlock.instructions) {
                 if (instruction instanceof AllocateInstruction) {
@@ -46,43 +47,49 @@ public class CodeGen {
                     ValueType.Type type = alloc.value1.getInnerType();
                     if (type instanceof ValueType.ArrayType) memSize += ((ValueType.ArrayType) type).getTotalSize() * 4;
                     else memSize += 4;
-                } else if (instruction instanceof BinaryInstruction) memSize += 4;
+                }
                 else if (instruction instanceof CallInstruction) {
-                    // 首先是要保存现场，用了几个寄存器就保存几个,这里先用8个,这8个就是一直在的
-                    memSize += 4 * 8;
                     CallInstruction callInstruction = (CallInstruction) instruction;
                     // 加载参数 ,对于函数加载参数之前的load语句不释放寄存器的情况需要解决
                     int size = callInstruction.funcRParams.size();
+                    ArrayList<Value> params = callInstruction.funcRParams;
                     // 超过四个参数就需要存到栈上
-                    memSize += (size - 4) * 4;
+                    if(size > 4) memSize += (size - 4) * 4;
                     // 处理load语句, 需要过滤掉是常数的参数, 因为常数没有load, 但是常数也需要加载, 这种加载就放在call里面处理
-                    int noConstSize = size;
-                    int[] paramMap = new int[size];
                     for (int i = 0; i < size; i++) {
-                        Value value = callInstruction.funcRParams.get(i);
-                        if (value instanceof Constant) {
-                            value.mipsHelper.setLoadParam(i);
-                            noConstSize--;
-                            paramMap[i] = 1;
-                        }
-                    }
-
-                    LinkedListNode instrPrev = instruction.getPrev();
-                    int paramIndex = 0;
-                    while (paramIndex < noConstSize) {
-                        if (instrPrev instanceof LoadInstruction) {
-                            LoadInstruction loadPrev = (LoadInstruction) instrPrev;
-                            if (!loadPrev.mipsHelper.isLoadParam()) {
-                                for (int i = 0; i < paramMap.length; i++) {
-                                    if (paramMap[i] == 0) {
-                                        loadPrev.mipsHelper.setLoadParam(i);
-                                        paramMap[i] = 1;
+                        Value param = params.get(i);
+                        if (params.get(i) instanceof Constant) {
+                            param.mipsHelper.setLoadParam(i);
+                        } else {
+                            LinkedListNode curInstr = callInstruction.getPrev();
+                            while (curInstr instanceof BaseInstruction) {
+                                boolean flag = false;
+                                if (curInstr instanceof LoadInstruction) {
+                                    LoadInstruction loadInstruction = (LoadInstruction) curInstr;
+                                    if (loadInstruction.result.getName().equals(param.getName()))
+                                        flag = true;
+                                } else if (curInstr instanceof CallInstruction) {
+                                    CallInstruction callInstruction_1 = (CallInstruction) curInstr;
+                                    if (callInstruction_1.value2 != null) {
+                                        if (callInstruction_1.value2.getName().equals(param.getName()))
+                                            flag = true;
                                     }
+                                } else if (curInstr instanceof BinaryInstruction) {
+                                    BinaryInstruction binaryInstruction = (BinaryInstruction) curInstr;
+                                    if (binaryInstruction.result.getName().equals(param.getName()))
+                                        flag = true;
+                                } else if (curInstr instanceof GetElementPtr) {
+                                    GetElementPtr getElementPtr = (GetElementPtr) curInstr;
+                                    if (getElementPtr.value1.getName().equals(param.getName()))
+                                        flag = true;
                                 }
-                                paramIndex++;
+                                if (flag) {
+                                    ((BaseInstruction) curInstr).mipsHelper.setLoadParam(i);
+                                    break;
+                                }
+                                curInstr = curInstr.getPrev();
                             }
                         }
-                        instrPrev = instrPrev.getPrev();
                     }
                 }
             }
@@ -123,41 +130,43 @@ public class CodeGen {
         mipsCode.add(new MipsInstruction("jr", "$ra"));
     }
 
-    private void saveStackTop() {
-        regAllocator.savePointer();
-        // 先把$fp存起来,存到寄存器，然后把$fp覆盖, 申请空间之后, 再把$fp存到内存里
-        RealRegister tempReg = regAllocator.getTempReg(regAllocator.getTempNum());
-        mipsCode.add(new MipsInstruction("add", tempReg.toString(), "$fp", "$zero"));
+    private void saveStackTop(Function function) {
+        // 先把$sp存起来,存到寄存器，然后把$sp覆盖, 申请空间之后, 再把$sp存到内存里
         mipsCode.add(new MipsInstruction("add", "$fp", "$sp", "$zero"));
-        Stack stack = regAllocator.getStackReg("$fp");
-        mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), "$fp", stack.toString()));
-        regAllocator.freeTempReg(tempReg);
+        // 申请内存
+        int memSize = preProcess(function);
+        mipsCode.add(new MipsInstruction( "addiu", "$sp", "$sp", "-" + memSize));
+        // 把原来的$sp存起来
+        Stack stack = regAllocator.getStackReg("$sp");
+        mipsCode.add(new MipsInstruction(true, "sw", "$fp", "$sp", stack.toString()));
         // 把$ra存起来
         stack = regAllocator.getStackReg("$ra");
-        mipsCode.add(new MipsInstruction(true, "sw", "$ra", "$fp", stack.toString()));
+        mipsCode.add(new MipsInstruction(true, "sw", "$ra", "$sp", stack.toString()));
     }
 
     private void fixStackTop() {
-        // 把$sp还原
-        mipsCode.add(new MipsInstruction("add", "$sp", "$fp", "$zero"));
         // 把$ra还原
         Stack stack = regAllocator.lookUpStack("$ra");
-        mipsCode.add(new MipsInstruction(true, "lw", "$ra", "$fp", stack.toString()));
-        // 把$fp还原
-        stack = regAllocator.lookUpStack("$fp");
-        mipsCode.add(new MipsInstruction(true, "lw", "$fp", "$fp", stack.toString()));
-        regAllocator.resolvePointer();
+        mipsCode.add(new MipsInstruction(true, "lw", "$ra", "$sp", stack.toString()));
+        // 把$sp还原
+        stack = regAllocator.lookUpStack("$sp");
+        mipsCode.add(new MipsInstruction(true, "lw", "$sp", "$sp", stack.toString()));
     }
 
     private void genFunction(Function function) {
         mipsCode.add(new MipsInstruction(function.name + ":"));
-        if (!curFunc.isMain()) genFunctionParam(function.funcFParams);
-        int memSize = preProcess(function);
-        mipsCode.add(new MipsInstruction(true, "addiu", "$sp", "$sp", "-" + memSize));
-        firstFlag = true;
+        // 把寄存器的保存现场用的字典建起来
+        for (int i = 8; i < 18; i++)
+            regAllocator.getStackReg(regAllocator.tempRegPool.get(i).toString());
+        // 加载函数参数
+        genFunctionParam(function.funcFParams);
+        // 加载函数所需内存
+        saveStackTop(function);
+        // 产生所有的块儿的内存
+        boolean isFirst = true;
         for (BasicBlock basicBlock : function.basicBlocks) {
-            genBlock(basicBlock);
-            firstFlag = false;
+            genBlock(basicBlock, isFirst);
+            isFirst = false;
         }
         regAllocator.clear();
     }
@@ -176,7 +185,6 @@ public class CodeGen {
 
     private void genGlobalVariable(GlobalVariable globalVariable) {
         // 如果没有初始化, 那么就直接赋0值
-        int size = 4;
         if (globalVariable.init == null) {
             if (globalVariable.type.getType() == ValueType.i32)
                 mipsCode.add(new MipsInstruction(globalVariable.name, ":    .word 0"));
@@ -184,7 +192,6 @@ public class CodeGen {
                 Integer memSize = 1;
                 ArrayList<Integer> dim = globalVariable.getInnerType().getDim();
                 for (Integer integer : dim) memSize *= integer;
-                size = memSize * 4;
                 mipsCode.add(new MipsInstruction(globalVariable.name, ":    .space " + memSize * 4));
             }
         } else {
@@ -193,19 +200,16 @@ public class CodeGen {
             else {
                 ValueType.ArrayType arrayType = (ValueType.ArrayType) globalVariable.type.getType();
                 ArrayList<Object> initials = globalVariable.flattenInitials(arrayType, globalVariable.init);
-                Collections.reverse(initials);
-                size = initials.size() * 4;
                 String init = initials.stream().map(Object::toString).reduce((x, y) -> x + ", " + y).orElse("");
                 mipsCode.add(new MipsInstruction(globalVariable.name, ":    .word " + init));
             }
         }
         // 添加符号表
-        regAllocator.virtual2Global.put(globalVariable.name, Integer.toString(size - 4));
+        regAllocator.virtual2Global.add(globalVariable.name);
     }
 
-    private void genBlock(BasicBlock block) {
-        if (!firstFlag) mipsCode.add(new MipsInstruction(curFunc.name + "_label_" + block.name + ":"));
-        saveStackTop();
+    private void genBlock(BasicBlock block, boolean isFirst) {
+        if (!isFirst) mipsCode.add(new MipsInstruction(curFunc.name + "_label_" + block.name + ":"));
         for (BaseInstruction instruction : block.instructions) {
             genInstruction(instruction);
         }
@@ -236,7 +240,7 @@ public class CodeGen {
             if (tempReg == null) {
                 Stack stackReg = regAllocator.lookUpStack(virtual.getName());
                 tempReg = regAllocator.getTempReg(virtual.getName());
-                mipsCode.add(new MipsInstruction(true, "lw", tempReg.toString(), "$fp", stackReg.toString()));
+                mipsCode.add(new MipsInstruction(true, "lw", tempReg.toString(), "$sp", stackReg.toString()));
             }
         }
         return tempReg;
@@ -251,7 +255,7 @@ public class CodeGen {
         } else {
             Stack stackReg = regAllocator.lookUpStack(storeInstruction.value2.getName());
             if (stackReg != null)
-                mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), "$fp", stackReg.toString()));
+                mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), "$sp", stackReg.toString()));
             else if (regAllocator.lookUpGlobal(storeInstruction.value2.name)) {
                 mipsCode.add(new MipsInstruction("sw", tempReg.toString(), storeInstruction.value2.name));
             }
@@ -260,35 +264,36 @@ public class CodeGen {
     }
 
     private void genLoadInstr(LoadInstruction loadInstruction) {
-        // 对于load参数的load语句,需要做特殊处理
+        // 对于不同的类别需要不同的寄存器
+        RealRegister tempReg;
         if (loadInstruction.mipsHelper.isLoadParam()) {
-            if (loadInstruction.mipsHelper.loadPos < 4) {
-                int index = loadInstruction.mipsHelper.loadPos;
-                RealRegister tempReg = regAllocator.tempRegPool.get(4 + index);
-                Stack stackReg = regAllocator.lookUpStack(loadInstruction.value1.getName());
-                mipsCode.add(new MipsInstruction(true, "lw", tempReg.toString(), "$fp", stackReg.toString()));
-            } else {
-                RealRegister tempReg = regAllocator.getTempReg(loadInstruction.result.getName());
+            int index = loadInstruction.mipsHelper.loadPos;
+            if (index < 4) tempReg = regAllocator.tempRegPool.get(4 + index);
+            else tempReg = regAllocator.getTempReg(loadInstruction.result.getName());
+        } else
+            tempReg = regAllocator.getTempReg(loadInstruction.result.getName());
+
+        RealRegister realRegister = regAllocator.lookUpTemp(loadInstruction.value1.getName());
+        // 如果是数组, 寄存器应该是被使用了而且存的是数组的地址
+        if (realRegister != null) {
+            mipsCode.add(new MipsInstruction(true, "lw", tempReg.toString(), realRegister.toString(), "0"));
+            regAllocator.freeTempReg(realRegister);
+        } else {
+            Stack stackReg = regAllocator.lookUpStack(loadInstruction.value1.getName());
+            // 这是一般的情况, 从栈上加载数据到寄存器里
+            if (stackReg != null)
+                mipsCode.add(new MipsInstruction(true, "lw", tempReg.toString(), "$sp", stackReg.toString()));
+                // 如果还是找不到, 寻找全局变量
+            else if (regAllocator.lookUpGlobal(loadInstruction.value1.name)) {
+                mipsCode.add(new MipsInstruction("lw", tempReg.toString(), loadInstruction.value1.name));
+            }
+        }
+        if(loadInstruction.mipsHelper.isLoadParam()){
+            int index = loadInstruction.mipsHelper.loadPos;
+            if(index >= 4){
                 regAllocator.getStackReg();
                 mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), "$sp", "0"));
                 regAllocator.freeTempReg(tempReg);
-            }
-        } else {
-            RealRegister tempReg = regAllocator.getTempReg(loadInstruction.result.getName());
-            RealRegister realRegister = regAllocator.lookUpTemp(loadInstruction.value1.getName());
-            // 如果是数组, 寄存器应该是被使用了而且存的是数组的地址
-            if (realRegister != null) {
-                mipsCode.add(new MipsInstruction(true, "lw", tempReg.toString(), realRegister.toString(), "0"));
-                regAllocator.freeTempReg(realRegister);
-            } else {
-                Stack stackReg = regAllocator.lookUpStack(loadInstruction.value1.getName());
-                // 这是一般的情况, 从栈上加载数据到寄存器里
-                if (stackReg != null)
-                    mipsCode.add(new MipsInstruction(true, "lw", tempReg.toString(), "$fp", stackReg.toString()));
-                    // 如果还是找不到, 寻找全局变量
-                else if (regAllocator.lookUpGlobal(loadInstruction.value1.name)) {
-                    mipsCode.add(new MipsInstruction("lw", tempReg.toString(), loadInstruction.value1.name));
-                }
             }
         }
     }
@@ -323,7 +328,13 @@ public class CodeGen {
         // 做二元算式
         RealRegister tempReg1 = lookup(binaryInstruction.value1);
         RealRegister tempReg2 = lookup(binaryInstruction.value2);
-        RealRegister tempRegRes = regAllocator.getTempReg(binaryInstruction.result.getName());
+        RealRegister tempRegRes;
+        if (binaryInstruction.mipsHelper.isLoadParam()) {
+            int index = binaryInstruction.mipsHelper.loadPos;
+            if (index < 4) tempRegRes = regAllocator.tempRegPool.get(4 + index);
+            else tempRegRes = regAllocator.getTempReg(binaryInstruction.result.getName());
+        } else
+            tempRegRes = regAllocator.getTempReg(binaryInstruction.result.getName());
         // 如果是加减法
         if (Operator.equals("add") || Operator.equals("sub") || Operator.equals("mul"))
             mipsCode.add(new MipsInstruction(Operator, tempRegRes.toString(), tempReg1.toString(), tempReg2.toString()));
@@ -335,6 +346,14 @@ public class CodeGen {
             if (Operator.equals("div")) mipsCode.add(new MipsInstruction("mflo", tempRegRes.toString()));
             // 如果是模取高位
             if (Operator.equals("rem")) mipsCode.add(new MipsInstruction("mfhi", tempRegRes.toString()));
+        }
+        if(binaryInstruction.mipsHelper.isLoadParam()){
+            int index = binaryInstruction.mipsHelper.loadPos;
+            if(index >= 4){
+                regAllocator.getStackReg();
+                mipsCode.add(new MipsInstruction(true, "sw", tempRegRes.toString(), "$sp", "0"));
+                regAllocator.freeTempReg(tempRegRes);
+            }
         }
         // 释放寄存器
         regAllocator.freeTempReg(tempReg1);
@@ -357,27 +376,42 @@ public class CodeGen {
                 }
             }
         }
-        // 保存现场, TODO 寄存器分配
+        // 保存现场
         for (int i = 8; i < 18; i++) {
             if (regAllocator.temRegUseMap[i] != VirtualRegister.None) {
-                Stack stack = regAllocator.getStackReg(regAllocator.temp2Virtual(i).toString());
+                Stack stack = regAllocator.lookUpStack(regAllocator.tempRegPool.get(i).toString());
                 RealRegister tempReg = regAllocator.tempRegPool.get(i);
-                mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), "$fp", stack.toString()));
+                mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), "$sp", stack.toString()));
+                regAllocator.record(tempReg, stack, regAllocator.temRegUseMap[i]);
                 regAllocator.freeTempReg(tempReg);
-                regAllocator.record(tempReg, stack);
             }
         }
         // 跳转到函数名
         String funcName = callInstruction.value1.name;
         mipsCode.add(new MipsInstruction("jal", funcName));
-        // 恢复现场
-        for (Pair pair : regAllocator.Recorder)
-            mipsCode.add(new MipsInstruction(true, "lw", pair.getFirst().toString(), "$fp", pair.getSecond().toString()));
+        // 恢复现场, 这里不需要再次申请寄存器
+        for (Triple triple : regAllocator.Recorder){
+            mipsCode.add(new MipsInstruction(true, "lw", triple.getFirst().toString(), "$sp", triple.getSecond().toString()));
+            regAllocator.temRegUseMap[((RealRegister)triple.getFirst()).getNum()] = (VirtualRegister) triple.getThird();
+        }
+
         regAllocator.recordClear();
         // 如果有返回值，把$v0的赋值到另外一个寄存器里
         if (callInstruction.value2 != null) {
-            RealRegister tempReg = this.regAllocator.getTempReg(callInstruction.value2.getName());
-            mipsCode.add(new MipsInstruction(true, "add", tempReg.toString(), "$zero", "$v0"));
+            RealRegister tempReg;
+            if(callInstruction.mipsHelper.isLoadParam()){
+                int index = callInstruction.mipsHelper.loadPos;
+                if (index < 4)
+                    tempReg = regAllocator.tempRegPool.get(4 + index);
+                else {
+                    tempReg = regAllocator.getTempReg(callInstruction.value2.getName());
+                    regAllocator.getStackReg();
+                    mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), "$sp", "0"));
+                    regAllocator.freeTempReg(tempReg);
+                }
+            }
+            else tempReg = this.regAllocator.getTempReg(callInstruction.value2.getName());
+            mipsCode.add(new MipsInstruction( "add", tempReg.toString(), "$zero", "$v0"));
         }
     }
 
@@ -400,7 +434,6 @@ public class CodeGen {
     }
 
     private void genBranchInstruction(BranchInstruction branchInstruction) {
-        fixStackTop();
         if (branchInstruction.value2 != null) {
             RealRegister tempReg = regAllocator.lookUpTemp(branchInstruction.cond.getName());
             String label_true = curFunc.name + "_label_" + branchInstruction.value1.name;
@@ -447,7 +480,7 @@ public class CodeGen {
                     mipsCode.add(new MipsInstruction("mul", arrOffset.toString(), arrOffset.toString(), col));
                 }
                 mipsCode.add(new MipsInstruction("mul", arrOffset.toString(), arrOffset.toString(), "4"));
-                mipsCode.add(new MipsInstruction("sub", array.toString(), array.toString(), arrOffset.toString()));
+                mipsCode.add(new MipsInstruction("add", array.toString(), array.toString(), arrOffset.toString()));
                 regAllocator.freeTempReg(arrOffset);
                 regAllocator.temRegUseMap[array.getNum()] = new VirtualRegister(getElementPtr.value1.getName());
             }
@@ -464,19 +497,17 @@ public class CodeGen {
                 // 如果一开始数组是存在内存里的，那就是一维数组
                 if (stack != null) {
                     RealRegister tempReg = regAllocator.getTempReg(regAllocator.getTempNum());
-                    mipsCode.add(new MipsInstruction("add", tempReg.toString(), "$fp", stack.toString()));
-                    mipsCode.add(new MipsInstruction("sub", curOffset.toString(), tempReg.toString(), curOffset.toString()));
+                    mipsCode.add(new MipsInstruction("add", tempReg.toString(), "$sp", stack.toString()));
+                    mipsCode.add(new MipsInstruction("add", curOffset.toString(), tempReg.toString(), curOffset.toString()));
                     regAllocator.freeTempReg(tempReg);
                 } else if (regAllocator.lookUpGlobal(getElementPtr.value2.name)) {
-                    String size = regAllocator.virtual2Global.get(getElementPtr.value2.name);
                     RealRegister tempReg = regAllocator.getTempReg(regAllocator.getTempNum());
                     mipsCode.add(new MipsInstruction("la", tempReg.toString(), getElementPtr.value2.name));
-                    mipsCode.add(new MipsInstruction("add", tempReg.toString(), tempReg.toString(), size));
-                    mipsCode.add(new MipsInstruction("sub", curOffset.toString(), tempReg.toString(), curOffset.toString()));
+                    mipsCode.add(new MipsInstruction("add", curOffset.toString(), tempReg.toString(), curOffset.toString()));
                     regAllocator.freeTempReg(tempReg);
                 } else {
                     RealRegister realRegister = regAllocator.lookUpTemp(array);
-                    mipsCode.add(new MipsInstruction("sub", curOffset.toString(), realRegister.toString(), curOffset.toString()));
+                    mipsCode.add(new MipsInstruction("add", curOffset.toString(), realRegister.toString(), curOffset.toString()));
                     regAllocator.freeTempReg(realRegister);
                 }
                 regAllocator.temRegUseMap[curOffset.getNum()] = new VirtualRegister(getElementPtr.value1.getName());
@@ -491,14 +522,12 @@ public class CodeGen {
                 // 首先找到目前的数组的地址
                 RealRegister tempReg = regAllocator.getTempReg(regAllocator.getTempNum());
                 if (regAllocator.lookUpGlobal(getElementPtr.value2.name)) {
-                    String size = regAllocator.virtual2Global.get(getElementPtr.value2.name);
                     mipsCode.add(new MipsInstruction("la", tempReg.toString(), getElementPtr.value2.name));
-                    mipsCode.add(new MipsInstruction("add", tempReg.toString(), tempReg.toString(), size));
-                    mipsCode.add(new MipsInstruction("sub", curOffset.toString(), tempReg.toString(), curOffset.toString()));
+                    mipsCode.add(new MipsInstruction("add", curOffset.toString(), tempReg.toString(), curOffset.toString()));
                 } else {
                     Stack stack = regAllocator.lookUpStack(getElementPtr.value2.getName());
-                    mipsCode.add(new MipsInstruction("add", tempReg.toString(), "$fp", stack.toString()));
-                    mipsCode.add(new MipsInstruction("sub", curOffset.toString(), tempReg.toString(), curOffset.toString()));
+                    mipsCode.add(new MipsInstruction("add", tempReg.toString(), "$sp", stack.toString()));
+                    mipsCode.add(new MipsInstruction("add", curOffset.toString(), tempReg.toString(), curOffset.toString()));
                 }
                 regAllocator.temRegUseMap[curOffset.getNum()] = new VirtualRegister(getElementPtr.value1.getName());
                 // 把寄存器free掉

@@ -3,11 +3,12 @@ package Backend;
 import Backend.Mem.RealRegister;
 import Backend.Mem.Stack;
 import Backend.Mem.VirtualRegister;
-import Utils.Pair;
+import Utils.Triple;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 
 
 public class RegAllocator {
@@ -17,26 +18,16 @@ public class RegAllocator {
             "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$t8", "$t9",
             "$k0", "$k1", "$gp", "$sp", "$fp", "$ra"
     };
-    public int prevPointer = 0;
     public int stackPointer = 0;
-    public HashMap<String, String> virtual2Global = new HashMap<>();
+    public HashSet<String> virtual2Global = new HashSet<>();
     public HashMap<VirtualRegister, Stack> virtual2Stack = new HashMap<>();
-    public ArrayList<Pair> Recorder = new ArrayList<>();
+    public ArrayList<Triple> Recorder = new ArrayList<>();
     public ArrayList<RealRegister> tempRegPool = new ArrayList<>();
     public VirtualRegister[] temRegUseMap = new VirtualRegister[RegName.length];
     public int tempNum = 1;
 
-    public void savePointer() {
-        prevPointer = stackPointer;
-        stackPointer = 0;
-    }
-
-    public void resolvePointer() {
-        stackPointer = prevPointer;
-    }
-
-    public void record(RealRegister realRegister, Stack stack) {
-        Recorder.add(new Pair(realRegister, stack));
+    public void record(RealRegister realRegister, Stack stack, VirtualRegister virtualRegister) {
+        Recorder.add(new Triple(realRegister, stack, virtualRegister));
     }
 
     public void recordClear() {
@@ -104,7 +95,7 @@ public class RegAllocator {
     }
 
     public boolean lookUpGlobal(String global) {
-        return virtual2Global.containsKey(global);
+        return virtual2Global.contains(global);
     }
 
     public RealRegister lookUpTemp(String virtualNum) {

@@ -1,12 +1,18 @@
 package Utils;
 
-public class Pair {
+public class Triple {
     Object first;
     Object second;
+    Object third;
 
-    public Pair(Object first, Object second) {
+    public Triple(Object first, Object second, Object third) {
         this.first = first;
         this.second = second;
+        this.third = third;
+    }
+
+    public Object getThird() {
+        return third;
     }
 
     public Object getFirst() {
@@ -15,13 +21,5 @@ public class Pair {
 
     public Object getSecond() {
         return second;
-    }
-
-    public void setFirst(Object first) {
-        this.first = first;
-    }
-
-    public void setSecond(Object second) {
-        this.second = second;
     }
 }

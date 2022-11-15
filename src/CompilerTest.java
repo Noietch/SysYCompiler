@@ -2,6 +2,7 @@ import Backend.CodeGen;
 import Front.LexicalAnalyzer.Scanner;
 import Front.SyntaxAnalyzer.TokenHandler;
 import Middle.IRBuilder;
+import Middle.IRCodeSwaper;
 import Utils.FileUtils;
 
 public class CompilerTest {
@@ -15,9 +16,11 @@ public class CompilerTest {
                 TokenHandler tokenHandler = new TokenHandler(p.getTokenArrayList());
                 IRBuilder irBuilder = new IRBuilder(tokenHandler.getSyntaxTreeRoot());
                 String ir = irBuilder.getIR();
+                IRCodeSwaper.swapPrint(irBuilder.currentModule);
                 CodeGen mipsGen = new CodeGen(irBuilder.currentModule);
                 String mips = mipsGen.genMips();
                 FileUtils.toFile(mips, "output/output" + i + ".txt");
+
             } catch (Exception e) {
                 System.out.println("error at file " + i);
             }

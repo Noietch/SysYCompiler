@@ -17,6 +17,6 @@ public class Stack {
 
     @Override
     public String toString() {
-        return Integer.toString(-getStackPos());
+        return Integer.toString(getStackPos());
     }
 }
