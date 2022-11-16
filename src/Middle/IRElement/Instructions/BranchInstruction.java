@@ -5,7 +5,6 @@ import Middle.IRElement.Value;
 
 public class BranchInstruction extends BaseInstruction {
     public Value cond;
-
     public BranchInstruction(Value cond, BasicBlock labelTrue, BasicBlock labelFalse) {
         this.cond = cond;
         this.value1 = labelTrue;

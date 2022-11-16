@@ -42,6 +42,10 @@ public class IRBuilder {
         return currentModule.toString();
     }
 
+    public Module getCurrentModule() {
+        return currentModule;
+    }
+
     public void visitCompUnit(CompUnit compUnit) {
         if (compUnit.decls.size() != 0)
             for (Decl decl : compUnit.decls) visitDecl(decl);

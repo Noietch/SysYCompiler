@@ -7,10 +7,6 @@ public class Stack {
         this.stackPos = stackPos;
     }
 
-    public Stack offset(int offset){
-        return new Stack(stackPos+offset);
-    }
-
     public int getStackPos(){
         return stackPos*4;
     }

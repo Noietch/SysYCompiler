@@ -10,7 +10,7 @@ public class CallInstruction extends BaseInstruction {
     public ArrayList<Value> funcRParams;
 
     public CallInstruction(Function function, Value res) {
-        this.value2 = res;
+        this.result = res;
         this.value1 = function;
         funcRParams = new ArrayList<>();
     }
@@ -21,15 +21,15 @@ public class CallInstruction extends BaseInstruction {
 
 
     public void setRes(Value res) {
-        this.value2 = res;
+        this.result = res;
     }
 
     @Override
     public String toString() {
         Function function = (Function) this.value1;
         StringBuilder res = new StringBuilder();
-        if (value2 != null)
-            res.append(this.value2.getName()).append(" = call ").append(function.returnType);
+        if (result != null)
+            res.append(this.result.getName()).append(" = call ").append(function.returnType);
         else
             res.append("call ").append(function.returnType);
         res.append(" ").append(function.getName()).append("(");

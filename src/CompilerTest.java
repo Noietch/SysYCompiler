@@ -2,7 +2,8 @@ import Backend.CodeGen;
 import Front.LexicalAnalyzer.Scanner;
 import Front.SyntaxAnalyzer.TokenHandler;
 import Middle.IRBuilder;
-import Middle.IRCodeSwaper;
+import Middle.IRElement.Basic.Module;
+import Optimize.Optimizer;
 import Utils.FileUtils;
 
 public class CompilerTest {
@@ -10,19 +11,22 @@ public class CompilerTest {
         for (int i = 1; i <= 30; i++) {
             try {
                 System.out.println("file: " + i);
-                String src = FileUtils.readFile("test/2022/A/testfile" + i + ".txt");
+                String src = FileUtils.readFile("test/2022/C/testfile" + i + ".txt");
                 Scanner p = new Scanner(src);
                 p.getSymbol();
                 TokenHandler tokenHandler = new TokenHandler(p.getTokenArrayList());
                 IRBuilder irBuilder = new IRBuilder(tokenHandler.getSyntaxTreeRoot());
                 String ir = irBuilder.getIR();
-                IRCodeSwaper.swapPrint(irBuilder.currentModule);
-                CodeGen mipsGen = new CodeGen(irBuilder.currentModule);
+                Module irModule = irBuilder.getCurrentModule();
+//                Optimizer optimizer = new Optimizer(irModule);
+//                optimizer.ReorganizePrintParam();
+                // backend code generation
+                CodeGen mipsGen = new CodeGen(irModule);
                 String mips = mipsGen.genMips();
-                FileUtils.toFile(mips, "output/output" + i + ".txt");
-
+                FileUtils.toFile(ir, "output/output" + i + ".txt");
             } catch (Exception e) {
-                System.out.println("error at file " + i);
+                e.printStackTrace();
+//                System.out.println("error at file " + i);
             }
         }
     }

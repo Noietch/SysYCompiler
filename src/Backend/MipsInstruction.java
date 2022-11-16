@@ -10,6 +10,9 @@ public class MipsInstruction {
     public String reg3;
     public String offset;
 
+    public String comment;
+
+    public MipsInstruction(){}
     public MipsInstruction(String label) {
         this.Label = label;
     }
@@ -40,8 +43,13 @@ public class MipsInstruction {
         this.reg1 = reg1;
     }
 
+    public void addComment(String comment) {
+        this.comment = comment;
+    }
+
     @Override
     public String toString() {
+        if (comment != null) return "    # " + comment;
         // 如果是个标志
         if (Label != null) return Label;
         // 如果操作内存
