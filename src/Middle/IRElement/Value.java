@@ -16,7 +16,7 @@ public class Value extends LinkedListNode {
     public boolean isConst = false;
     public boolean isGlobal = false;
 
-    public MipsHelper mipsHelper = new MipsHelper(MipsHelper.Type.normal);
+
 
     // ====================== 对于局部常量数组或者是全局数组需要对索引进行数字化 ============================
     public ArrayList<Constant> array = new ArrayList<>();

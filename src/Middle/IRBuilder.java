@@ -196,7 +196,6 @@ public class IRBuilder {
                     GetElementPtr getElementPtr = new GetElementPtr(firstAddr, temp, new Constant("0"), new Constant("0"));
                     currentBasicBlock.appendInst(getElementPtr);
                     temp = firstAddr;
-                    getElementPtr.mipsHelper.setInit();
                 }
                 // 初值
                 currentPos = 0;
@@ -303,7 +302,6 @@ public class IRBuilder {
                         GetElementPtr getElementPtr = new GetElementPtr(firstAddr, temp, new Constant("0"), new Constant("0"));
                         currentBasicBlock.appendInst(getElementPtr);
                         temp = firstAddr;
-                        getElementPtr.mipsHelper.setInit();
                     }
                     // 初值
                     currentPos = 0;
