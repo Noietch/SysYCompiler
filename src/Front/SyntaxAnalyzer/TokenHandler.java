@@ -533,7 +533,9 @@ public class TokenHandler {
                 else type = VarType.twoDimArray;
             } else nextSym();
             return new LVal(ident, type, exps);
-        } else throw new ParseError("[LVal Error] IDENFR");
+        } else {
+            throw new ParseError("[LVal Error] IDENFR");
+        }
     }
 
     private PrimaryExp primaryExp() throws ParseError {

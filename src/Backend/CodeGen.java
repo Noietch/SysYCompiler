@@ -53,7 +53,8 @@ public class CodeGen {
         int memSize = (1 + 1) * 4;
         // 保存现场，用了几个寄存器就保存几个,这里先用8个,这8个就是一直在的
         memSize += 4 * 10;
-
+        // 对于每一个函数调用，都添加最大的函数调用栈
+        memSize += maxParamStack * 4;
         for (BasicBlock basicBlock : function.basicBlocks) {
             for (BaseInstruction instruction : basicBlock.instructions) {
                 if (instruction instanceof AllocateInstruction) {
@@ -80,8 +81,6 @@ public class CodeGen {
                     for (int i = 0; i < size; i++) {
                         regAllocator.addToParam(params.get(i).getName());
                     }
-                    // 对于每一个函数调用，都添加最大的函数调用栈
-                    memSize += maxParamStack * 4;
                 }
             }
         }
@@ -148,7 +147,7 @@ public class CodeGen {
         int memSize = preProcess(function);
         // 把函数调用栈的字典建立起来
         for (int i = 0; i < maxParamStack; i++) {
-            regAllocator.virtual2Stack.put(new VirtualRegister("param" + (4 + i)), new Stack(i));
+            regAllocator.getStackReg("param" + (4 + i));
         }
         // 把寄存器的保存现场用的字典建起来
         for (int i = 8; i < 18; i++) {
