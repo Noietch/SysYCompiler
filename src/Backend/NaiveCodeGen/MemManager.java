@@ -1,4 +1,4 @@
-package Backend;
+package Backend.NaiveCodeGen;
 
 import Backend.Mem.RealRegister;
 import Backend.Mem.Stack;
@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 
-public class RegAllocator {
+public class MemManager {
     static public String[] RegName = {
             "$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3",
             "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$s0",
@@ -28,7 +28,6 @@ public class RegAllocator {
     public VirtualRegister[] temRegUseMap = new VirtualRegister[RegName.length];
     public HashSet<String> arrayVirtualReg = new HashSet<>();
     public HashSet<String> paramVirtualReg = new HashSet<>();
-
 
     public boolean isParam(String name) {
         return paramVirtualReg.contains(name);
@@ -71,7 +70,7 @@ public class RegAllocator {
         }
     }
 
-    public RegAllocator() {
+    public MemManager() {
         initTempRegPool();
     }
 

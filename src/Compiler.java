@@ -1,5 +1,5 @@
-import Backend.CodeGen;
-import Backend.OptimizeCodeGen;
+import Backend.NaiveCodeGen.CodeGen;
+import Backend.OptimizeCodeGen.OptimizeCodeGen;
 import Front.LexicalAnalyzer.Scanner;
 import Front.SyntaxAnalyzer.Element.CompUnit;
 import Front.SyntaxAnalyzer.ErrorHandler;
