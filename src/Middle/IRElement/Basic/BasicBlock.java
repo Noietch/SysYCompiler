@@ -9,6 +9,9 @@ public class BasicBlock extends Value {
     public LinkedList<BaseInstruction> instructions;
     public boolean isTerminate = false;
 
+    public boolean enterLoop = false;
+    public boolean exitLoop = false;
+
     public BasicBlock(String name, Function parent) {
         this.name = name;
         this.parent = parent;
@@ -34,13 +37,17 @@ public class BasicBlock extends Value {
         this.name = num;
     }
 
-    public void insertInstBefore(BaseInstruction nextInst, BaseInstruction newInst) {
-        instructions.insertBefore(nextInst, newInst);
-    }
-
     public void setTerminator(BaseInstruction newNode) {
         appendInst(newNode);
         isTerminate = true;
+    }
+
+    public void setEnterLoop() {
+        this.enterLoop = true;
+    }
+
+    public void setExitLoop() {
+        this.exitLoop = true;
     }
 
     public String getDescriptor() {

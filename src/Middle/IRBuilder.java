@@ -614,6 +614,7 @@ public class IRBuilder {
     public void visitLoop(Stmt stmt) {
         BasicBlock.LoopBlock ifBlock = new BasicBlock.LoopBlock(null, currentFunction);
         BasicBlock outBlock = new BasicBlock(currentFunction);
+        outBlock.setExitLoop();
         // 新建判断基本分支指令，加到目前的基本块中
         BranchInstruction judge = new BranchInstruction(null);
         currentBasicBlock.appendInst(judge);
@@ -621,6 +622,7 @@ public class IRBuilder {
         BasicBlock judgeBlock = new BasicBlock(getRegister(), currentFunction);
         currentFunction.addBasicBlock(judgeBlock);
         judge.setLabelTrue(judgeBlock);
+        judgeBlock.setEnterLoop();
         // 进入判断基本块
         currentBasicBlock = judgeBlock;
         visitCond(stmt.cond, ifBlock, null, outBlock);

@@ -94,6 +94,17 @@ public class RegAllocator {
         return "temp" + tempNum++;
     }
 
+
+    public int getUseTempReg() {
+        int res = 0;
+        for (int i = 8; i < 18; i++) {
+            if (temRegUseMap[i] != VirtualRegister.None) {
+                res++;
+            }
+        }
+        return res;
+    }
+
     public RealRegister getTempReg(String virtualNum) {
         // TODO 寄存器分配
         for (int i = 8; i < 18; i++) {

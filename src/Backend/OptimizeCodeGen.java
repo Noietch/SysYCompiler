@@ -4,7 +4,6 @@ import Backend.Mem.RealRegister;
 import Backend.Mem.Stack;
 import Backend.Mem.VirtualRegister;
 import Middle.IRElement.Basic.*;
-import Middle.IRElement.Basic.Module;
 import Middle.IRElement.Instructions.*;
 import Middle.IRElement.Type.ValueType;
 import Middle.IRElement.Value;
@@ -13,7 +12,7 @@ import Utils.Triple;
 import java.util.ArrayList;
 import java.util.Collections;
 
-public class CodeGen {
+public class OptimizeCodeGen {
     public Module irModule;
     public Function curFunc;
     public RegAllocator regAllocator;
@@ -21,7 +20,7 @@ public class CodeGen {
 
     public int maxParamStack;
 
-    public CodeGen(Module irModule) {
+    public OptimizeCodeGen(Module irModule) {
         this.mipsCode = new ArrayList<>();
         this.regAllocator = new RegAllocator();
         this.irModule = irModule;
@@ -62,7 +61,7 @@ public class CodeGen {
                     ValueType.Type type = alloc.result.getInnerType();
                     if (type instanceof ValueType.ArrayType) memSize += ((ValueType.ArrayType) type).getTotalSize() * 4;
                     else memSize += 4;
-                } // 如果是二元表达式，则需要存
+                } // 如果是二元表达式，如果临时寄存器不够用了，则需要存一部分
                 else if (instruction instanceof BinaryInstruction) memSize += 4;
                 else if (instruction instanceof GetElementPtr) {
                     // 每一个数组加载出来的地址需要存到相应的地方
@@ -107,17 +106,8 @@ public class CodeGen {
             if (function.define) {
                 curFunc = function;
                 genFunction(function);
-            } else genDefine(function);
+            }
         }
-    }
-
-    private void genDefine(Function function) {
-        mipsCode.add(new MipsInstruction(function.name + ":"));
-        if (function.name.equals("putch")) mipsCode.add(new MipsInstruction("addiu", "$v0", "$zero", "11"));
-        if (function.name.equals("putint")) mipsCode.add(new MipsInstruction("addiu", "$v0", "$zero", "1"));
-        if (function.name.equals("getint")) mipsCode.add(new MipsInstruction("addiu", "$v0", "$zero", "5"));
-        mipsCode.add(new MipsInstruction("syscall", ""));
-        mipsCode.add(new MipsInstruction("jr", "$ra"));
     }
 
     private void saveStackTop(int memSize) {
@@ -310,36 +300,176 @@ public class CodeGen {
         }
     }
 
+    // 乘法优化
+    private void mulOptimize(String res, String op1, String op2) {
+        final int bitsOfInt = 32;
+        int imm = Integer.parseInt(op2);
+        int abs = (imm < 0) ? (-imm) : imm;
+        if (abs == 0) {
+            mipsCode.add(new MipsInstruction("addu", res, "$zero", "$zero"));
+        } else if ((abs & (abs - 1)) == 0) {
+            // imm 是 2 的幂
+            int sh = bitsOfInt - 1 - Integer.numberOfLeadingZeros(abs);
+            mipsCode.add(new MipsInstruction("sll", res, op1, Integer.toString(sh)));
+            if (imm < 0) {
+                mipsCode.add(new MipsInstruction("subu", res, "$zero", res));
+            }
+        } else if (Integer.bitCount(abs) == 2) {
+            // 如果有两个1, 那就是两个shift操作
+            // a * 10 => (a << 3) + (a << 1)
+            int hi = bitsOfInt - 1 - Integer.numberOfLeadingZeros(abs);
+            int lo = Integer.numberOfTrailingZeros(abs);
+            RealRegister shiftHi = regAllocator.getTempReg(regAllocator.getTempNum());
+            mipsCode.add(new MipsInstruction("sll", shiftHi.toString(), op1, Integer.toString(hi)));
+            mipsCode.add(new MipsInstruction("sll", op1, op1, Integer.toString(lo)));
+            mipsCode.add(new MipsInstruction("addu", res, shiftHi.toString(), op1));
+            if (imm < 0) {
+                mipsCode.add(new MipsInstruction("subu", res, "$zero", res));
+            }
+            regAllocator.freeTempReg(shiftHi);
+        } else if (((abs + 1) & (abs)) == 0) {
+            // 若乘数的绝对值为2的幂-1，可用一条移位指令和减法指令
+            // a * (2^sh - 1) => (a << sh) - a
+            int sh = bitsOfInt - 1 - Integer.numberOfLeadingZeros(abs + 1);
+            RealRegister shift = regAllocator.getTempReg(regAllocator.getTempNum());
+            mipsCode.add(new MipsInstruction("sll", shift.toString(), op1, Integer.toString(sh)));
+            mipsCode.add(new MipsInstruction("subu", res, shift.toString(), op1));
+            if (imm < 0) {
+                mipsCode.add(new MipsInstruction("subu", res, "$zero", res));
+            }
+            regAllocator.freeTempReg(shift);
+        } else {
+            mipsCode.add(new MipsInstruction("mul", res, op1, op2));
+        }
+    }
+
+
+    // choose_multiplier utils
+    public static long[] choose_multiplier(int d, int prec) {
+        int N = 32;
+        long l = (long) Math.ceil((Math.log(d) / Math.log(2)));
+        long sh_post = l;
+        long m_low = (long) Math.floor(Math.pow(2, N + l) / d);
+        long m_high = (long) Math.floor((Math.pow(2, N + l) + Math.pow(2, N + l - prec)) / d);
+        while ((Math.floor(m_low >> 1) < Math.floor(m_high >> 1)) && sh_post > 0) {
+            m_low = (long) Math.floor(m_low >> 1);
+            m_high = (long) Math.floor(m_high >> 1);
+            sh_post = sh_post - 1;
+        }
+        return new long[]{m_high, sh_post, l};
+    }
+
+    // 除法优化
+    private void divOptimize(String res, String op1, String op2, String op) {
+        final int bitsOfInt = 32;
+        int imm = Integer.parseInt(op2);
+        int abs = (imm < 0) ? (-imm) : imm;
+        long[] multiplier = choose_multiplier(abs, bitsOfInt - 1);
+        long m = multiplier[0];
+        long sh_post = multiplier[1];
+        long l = multiplier[2];
+        RealRegister tempReg = regAllocator.getTempReg(regAllocator.getTempNum());
+        if (imm == 1) {
+            mipsCode.add(new MipsInstruction("addu", res, op1, "$zero"));
+        } else if (imm == -1) {
+            mipsCode.add(new MipsInstruction("subu", res, "$zero", op1));
+        } else if (abs == 1 << l) {
+            //q = SRA(op1 + SRL(SRA(op1, sh-1),bitsOfInt-sh),sh);
+            int sh = bitsOfInt - 1 - Integer.numberOfLeadingZeros(abs);
+            mipsCode.add(new MipsInstruction("sra", tempReg.toString(), op1, Integer.toString(sh - 1)));
+            mipsCode.add(new MipsInstruction("srl", tempReg.toString(), tempReg.toString(), Integer.toString(bitsOfInt - sh)));
+            mipsCode.add(new MipsInstruction("addu", tempReg.toString(), tempReg.toString(), op1));
+            mipsCode.add(new MipsInstruction("sra", res, tempReg.toString(), Integer.toString(sh)));
+            regAllocator.freeTempReg(tempReg);
+        } else if (m < (1L << (bitsOfInt - 1))) {
+            // q = SRA(MULSH(m, n), shpost) - XSIGN(n);
+            mipsCode.add(new MipsInstruction("addiu", tempReg.toString(), "$zero", Long.toString(m)));
+            mipsCode.add(new MipsInstruction("mult", tempReg.toString(), op1));
+            mipsCode.add(new MipsInstruction("mfhi", tempReg.toString()));
+            mipsCode.add(new MipsInstruction("sra", res, tempReg.toString(), Long.toString(sh_post)));
+            mipsCode.add(new MipsInstruction("sra", tempReg.toString(), op1, Integer.toString(bitsOfInt - 1)));
+            mipsCode.add(new MipsInstruction("subu", res, res, tempReg.toString()));
+        } else {
+            // q = SRA(n + MULSH(m - 2^N, n), shpost)- XSIGN(n);
+            mipsCode.add(new MipsInstruction("addiu", tempReg.toString(), "$zero", Long.toString(m - (1L << bitsOfInt))));
+            mipsCode.add(new MipsInstruction("mult", tempReg.toString(), op1));
+            mipsCode.add(new MipsInstruction("mfhi", tempReg.toString()));
+            mipsCode.add(new MipsInstruction("addu", tempReg.toString(), tempReg.toString(), op1));
+            mipsCode.add(new MipsInstruction("sra", res, tempReg.toString(), Long.toString(sh_post)));
+            mipsCode.add(new MipsInstruction("sra", tempReg.toString(), op1, Integer.toString(bitsOfInt - 1)));
+            mipsCode.add(new MipsInstruction("subu", res, res, tempReg.toString()));
+        }
+        if (imm < 0) {
+            mipsCode.add(new MipsInstruction("subu", res, "$zero", res));
+        }
+        if (op.equals("rem")) {
+            mipsCode.add(new MipsInstruction("mul", tempReg.toString(), res, op2));
+            mipsCode.add(new MipsInstruction("subu", res, op1, tempReg.toString()));
+        }
+        regAllocator.freeTempReg(tempReg);
+    }
+
+    // 二元运算
     private void genBinaryInstr(BinaryInstruction binaryInstruction) {
         String Operator = "";
         if (binaryInstruction.op.type.equals(Op.Type.add)) Operator = "addu";
-        if (binaryInstruction.op.type.equals(Op.Type.sub)) Operator = "sub";
+        if (binaryInstruction.op.type.equals(Op.Type.sub)) Operator = "subu";
         if (binaryInstruction.op.type.equals(Op.Type.mul)) Operator = "mul";
         if (binaryInstruction.op.type.equals(Op.Type.sdiv)) Operator = "div";
         if (binaryInstruction.op.type.equals(Op.Type.srem)) Operator = "rem";
-        // 做二元算式
+
+        // 得到第一个寄存器
         RealRegister tempReg1 = lookup(binaryInstruction.value1);
-        RealRegister tempReg2 = lookup(binaryInstruction.value2);
+        String reg1 = tempReg1.toString();
+
+        // 得到第二个寄存器
+        // 如果是立即数，就直接用立即数
+        String reg2;
+        RealRegister tempReg2 = null;
+        if (binaryInstruction.value2 instanceof Constant) {
+            reg2 = binaryInstruction.value2.name;
+        } else {
+            tempReg2 = lookup(binaryInstruction.value2);
+            reg2 = tempReg2.toString();
+
+        }
+        // 得到结果寄存器
         RealRegister tempRegRes = regAllocator.getTempReg(binaryInstruction.result.getName());
+        String regRes = tempRegRes.toString();
+
         // 如果是加减法
-        if (Operator.equals("addu") || Operator.equals("sub") || Operator.equals("mul"))
-            mipsCode.add(new MipsInstruction(Operator, tempRegRes.toString(), tempReg1.toString(), tempReg2.toString()));
+        if (Operator.equals("addu") || Operator.equals("subu"))
+            mipsCode.add(new MipsInstruction(Operator, regRes, reg1, reg2));
+
+        // 如果是乘法
+        if (Operator.equals("mul")) {
+            if (binaryInstruction.value2 instanceof Constant) {
+                mulOptimize(regRes, reg1, reg2);
+            } else {
+                mipsCode.add(new MipsInstruction(Operator, regRes, reg1, reg2));
+            }
+        }
         // 如果是除法和模
         if (Operator.equals("div") || Operator.equals("rem")) {
-            // 先做除法
-            mipsCode.add(new MipsInstruction("div", tempReg1.toString(), tempReg2.toString()));
-            // 如果是除法取低位
-            if (Operator.equals("div")) mipsCode.add(new MipsInstruction("mflo", tempRegRes.toString()));
-            // 如果是模取高位
-            if (Operator.equals("rem")) mipsCode.add(new MipsInstruction("mfhi", tempRegRes.toString()));
+            if (binaryInstruction.value2 instanceof Constant) {
+                divOptimize(regRes, reg1, reg2, Operator);
+            } else {
+                mipsCode.add(new MipsInstruction("div", reg1, reg2));
+                if (Operator.equals("div"))
+                    mipsCode.add(new MipsInstruction("mflo", regRes));
+                else
+                    mipsCode.add(new MipsInstruction("mfhi", regRes));
+            }
         }
-        // 把东西存到栈里
-        Stack stack = regAllocator.getStackReg(binaryInstruction.result.getName());
-        mipsCode.add(new MipsInstruction(true, "sw", tempRegRes.toString(), "$sp", stack.toString()));
         // 释放寄存器
         regAllocator.freeTempReg(tempReg1);
-        regAllocator.freeTempReg(tempReg2);
-        regAllocator.freeTempReg(tempRegRes);
+        if (tempReg2 != null) regAllocator.freeTempReg(tempReg2);
+        //假如目前的寄存器使用量大于6个，就把结果存在内存中
+        if(regAllocator.getUseTempReg() > 6){
+            Stack stack = regAllocator.getStackReg(binaryInstruction.result.getName());
+            mipsCode.add(new MipsInstruction(true, "sw", regRes, "$sp", stack.toString()));
+            regAllocator.freeTempReg(tempRegRes);
+        }
     }
 
     private void loadParam(ArrayList<Value> params) {
@@ -350,6 +480,12 @@ public class CodeGen {
                 if (param instanceof Constant) {
                     mipsCode.add(new MipsInstruction("li", "$a" + i, param.toString()));
                 } else {
+                    RealRegister realRegister = regAllocator.lookUpTemp(param.getName());
+                    if(realRegister != null) {
+                        mipsCode.add(new MipsInstruction("move", "$a" + i, realRegister.toString()));
+                        regAllocator.freeTempReg(realRegister);
+                        continue;
+                    }
                     // 如果是栈上的值，就先把栈上的值加载到寄存器里
                     Stack stack = regAllocator.lookUpStack(param.getName());
                     String global = regAllocator.lookupGlobal(param.getName());
@@ -368,6 +504,13 @@ public class CodeGen {
                 }
             } else {
                 // 如果参数大于4个，就要把参数放到栈上
+                RealRegister realRegister = regAllocator.lookUpTemp(param.getName());
+                Stack stack_ = regAllocator.lookUpStack("param" + i);
+                if(realRegister != null) {
+                    mipsCode.add(new MipsInstruction(true, "sw", realRegister.toString(), "$sp", stack_.toString()));
+                    regAllocator.freeTempReg(realRegister);
+                    continue;
+                }
                 // 处理常数情况
                 if (param instanceof Constant) {
                     RealRegister tempReg = regAllocator.getTempReg(regAllocator.getTempNum());
@@ -407,10 +550,45 @@ public class CodeGen {
             }
         }
     }
+
+    // 判断是否是IO函数
+    private boolean isIOCall(CallInstruction callInstruction) {
+        String name = callInstruction.value1.name;
+        return name.equals("putch") || name.equals("putint") || name.equals("getint");
+    }
+
+    // 内联IO函数
+    private void inlineIO(CallInstruction callInstruction) {
+        if (callInstruction.value1.name.equals("putch")) {
+            mipsCode.add(new MipsInstruction("addiu", "$v0", "$zero", "11"));
+            mipsCode.add(new MipsInstruction("syscall", ""));
+        }
+        if (callInstruction.value1.name.equals("putint")) {
+            mipsCode.add(new MipsInstruction("addiu", "$v0", "$zero", "1"));
+            mipsCode.add(new MipsInstruction("syscall", ""));
+        }
+        if (callInstruction.value1.name.equals("getint")) {
+            mipsCode.add(new MipsInstruction("addiu", "$v0", "$zero", "5"));
+            mipsCode.add(new MipsInstruction("syscall", ""));
+            RealRegister tempReg = this.regAllocator.getTempReg(callInstruction.result.getName());
+            mipsCode.add(new MipsInstruction("addu", tempReg.toString(), "$zero", "$v0"));
+            //把东西存到栈里
+            Stack stack = regAllocator.getStackReg(callInstruction.result.getName());
+            mipsCode.add(new MipsInstruction(true, "sw", tempReg.toString(), "$sp", stack.toString()));
+            //释放寄存器
+            regAllocator.freeTempReg(tempReg);
+        }
+    }
+
     private void genCallInstr(CallInstruction callInstruction) {
         // 首先把函数的参数加载到对应的寄存器中
         int size = callInstruction.funcRParams.size();
         loadParam(callInstruction.funcRParams);
+        // 如果是IO函数，就直接内联
+        if (isIOCall(callInstruction)) {
+            inlineIO(callInstruction);
+            return;
+        }
         // 释放有关寄存器
         for (int i = 0; i < size; i++) {
             Value param = callInstruction.funcRParams.get(i);

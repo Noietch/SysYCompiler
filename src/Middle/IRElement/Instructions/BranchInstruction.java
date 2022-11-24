@@ -1,7 +1,10 @@
 package Middle.IRElement.Instructions;
 
 import Middle.IRElement.Basic.BasicBlock;
+import Middle.IRElement.Basic.Constant;
 import Middle.IRElement.Value;
+
+import java.util.ArrayList;
 
 public class BranchInstruction extends BaseInstruction {
     public Value cond;
@@ -19,10 +22,6 @@ public class BranchInstruction extends BaseInstruction {
         this.value1 = labelTrue;
     }
 
-    public void setLabelFalse(BasicBlock labelFalse) {
-        this.value2 = labelFalse;
-    }
-
     @Override
     public String toString() {
         BasicBlock B1 = (BasicBlock) value1;
@@ -32,5 +31,19 @@ public class BranchInstruction extends BaseInstruction {
         } else {
             return "br " + B1.getDescriptor();
         }
+    }
+
+    // 分支指令有一个use
+    @Override
+    public ArrayList<Value> getUse(){
+        ArrayList<Value> use = new ArrayList<>();
+        if(cond != null && !(cond instanceof Constant)) use.add(cond);
+        return use;
+    }
+
+    // 分支指令没有def
+    @Override
+    public ArrayList<Value> getDef(){
+        return new ArrayList<>();
     }
 }

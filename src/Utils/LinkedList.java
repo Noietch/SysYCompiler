@@ -42,6 +42,18 @@ public class LinkedList<T extends LinkedListNode> implements Iterable<T> {
         targetNode.getNext().setPrev(targetNode.getPrev());
         size--;
     }
+    @SuppressWarnings("unchecked")
+    public T getHead() {
+        return (T) head.getNext();
+    }
+    @SuppressWarnings("unchecked")
+    public T getTail() {
+        return (T) tail.getPrev();
+    }
+
+    public int getSize() {
+        return size;
+    }
 
     @Override
     public Iterator<T> iterator() {

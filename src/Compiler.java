@@ -1,10 +1,12 @@
 import Backend.CodeGen;
+import Backend.OptimizeCodeGen;
 import Front.LexicalAnalyzer.Scanner;
 import Front.SyntaxAnalyzer.Element.CompUnit;
 import Front.SyntaxAnalyzer.ErrorHandler;
 import Front.SyntaxAnalyzer.TokenHandler;
 import Middle.IRBuilder;
 import Middle.IRElement.Basic.Module;
+import Optimize.Optimizer;
 import Utils.FileUtils;
 
 import java.io.IOException;
@@ -30,9 +32,22 @@ public class Compiler {
             FileUtils.toFile(ir, CompilerConfig.LLVM_IR_FILE);
             // backend code generation
             Module irModule = irBuilder.getCurrentModule();
-            CodeGen mipsGen = new CodeGen(irModule);
-            String mips = mipsGen.genMips();
-            FileUtils.toFile(mips, CompilerConfig.MIPS_FILE);
+            if(CompilerConfig.OPTIMIZE){
+                // llvm ir optimize
+                Optimizer optimizer = new Optimizer(irModule);
+                optimizer.instructionOptimize();
+                String optIr = irModule.toString();
+                FileUtils.toFile(optIr, CompilerConfig.LLVM_OPT_IR_FILE);
+                // optimize backend code generation
+                OptimizeCodeGen mipsGen = new OptimizeCodeGen(irModule);
+                String mips = mipsGen.genMips();
+                FileUtils.toFile(mips, CompilerConfig.MIPS_FILE);
+            }else {
+                // naive backend code generation
+                CodeGen mipsGen = new CodeGen(irModule);
+                String mips = mipsGen.genMips();
+                FileUtils.toFile(mips, CompilerConfig.MIPS_FILE);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
