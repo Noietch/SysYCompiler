@@ -247,6 +247,7 @@ public class OptimizeCodeGen {
         RealRegister target = memManager.lookUpTemp(storeInstruction.value2.getName());
         if(target != null){
             mipsCode.add(new MipsInstruction("move", target.toString(), tempReg.toString()));
+            memManager.freeTempReg(tempReg);
             return;
         }
         Stack stackReg = memManager.lookUpStack(storeInstruction.value2.getName());
