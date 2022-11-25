@@ -87,7 +87,8 @@ public class OpMemManager {
     }
 
     public void freeTempReg(RealRegister tempReg) {
-        temRegUseMap[tempReg.getNum()] = VirtualRegister.None;
+        if(tempReg.getNum() >= TEMP_REG_LOWER_BOUND && tempReg.getNum() < TEMP_REG_UPPER_BOUND)
+            temRegUseMap[tempReg.getNum()] = VirtualRegister.None;
     }
 
     public String getTempNum() {
@@ -150,6 +151,10 @@ public class OpMemManager {
                 temRegUseMap[i] = new VirtualRegister(ref.get(i - TEMP_REG_UPPER_BOUND));
             }
         }
+    }
+
+    public boolean isGlobalReg(RealRegister realRegister) {
+        return realRegister.getNum() >= TEMP_REG_UPPER_BOUND && realRegister.getNum() < GLOBAL_REG_UPPERBOUND;
     }
 
     // lookUpGlobalReg
