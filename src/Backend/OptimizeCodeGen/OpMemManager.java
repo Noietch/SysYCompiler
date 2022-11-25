@@ -122,6 +122,7 @@ public class OpMemManager {
         virtual2Global.clear();
         arrayVirtualReg.clear();
         paramVirtualReg.clear();
+        virtual2Reg.clear();
         Arrays.fill(temRegUseMap, VirtualRegister.None);
     }
 

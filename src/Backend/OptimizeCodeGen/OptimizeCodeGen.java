@@ -56,8 +56,8 @@ public class OptimizeCodeGen {
     public int preProcess(Function function) {
         // 保存 $ra 和 $sp
         int memSize = (1 + 1) * 4;
-        // 保存现场，临时寄存器6个
-        memSize += 4 * memManager.TEMP_REG_NUM;
+        // 保存现场，所有寄存器
+        memSize += 4 * (memManager.GLOBAL_REG_UPPERBOUND - memManager.TEMP_REG_LOWER_BOUND);
         // 对于每一个函数调用，都添加最大的函数调用栈
         memSize += maxParamStack * 4;
         for (BasicBlock basicBlock : function.basicBlocks) {
@@ -151,7 +151,7 @@ public class OptimizeCodeGen {
             memManager.getStackReg("param" + (4 + i));
         }
         // 把寄存器的保存现场用的字典建起来
-        for (int i = memManager.TEMP_REG_LOWER_BOUND; i < memManager.TEMP_REG_UPPER_BOUND; i++) {
+        for (int i = memManager.TEMP_REG_LOWER_BOUND; i < memManager.GLOBAL_REG_UPPERBOUND; i++) {
             memManager.getStackReg(memManager.tempRegPool.get(i).toString());
         }
         // 保存栈顶及 $ra
@@ -640,7 +640,7 @@ public class OptimizeCodeGen {
             if (realRegister != null) memManager.freeTempReg(realRegister);
         }
         // 保存现场
-        for (int i = memManager.TEMP_REG_LOWER_BOUND; i < memManager.TEMP_REG_UPPER_BOUND; i++) {
+        for (int i = memManager.TEMP_REG_LOWER_BOUND; i < memManager.GLOBAL_REG_UPPERBOUND; i++) {
             if (memManager.temRegUseMap[i] != VirtualRegister.None) {
                 Stack stack = memManager.lookUpStack(memManager.tempRegPool.get(i).toString());
                 RealRegister tempReg = memManager.tempRegPool.get(i);

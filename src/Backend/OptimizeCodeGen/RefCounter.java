@@ -2,6 +2,7 @@ package Backend.OptimizeCodeGen;
 
 import Middle.IRElement.Basic.BasicBlock;
 import Middle.IRElement.Basic.Function;
+import Middle.IRElement.Basic.GlobalVariable;
 import Middle.IRElement.Instructions.*;
 import Middle.IRElement.Type.ValueType;
 
@@ -35,13 +36,17 @@ public class RefCounter {
                 if(instruction instanceof AllocateInstruction){
                     ValueType.Type type = instruction.result.getInnerType();
                     // 如果是数组，则计算空间后分配
-                    if (type instanceof ValueType.ArrayType) {
+                    if (type != ValueType.i32) {
                         ArraySet.add(instruction.result.getName());
                     }
+                }
+                if(instruction instanceof GetElementPtr){
+                    ArraySet.add(instruction.result.getName());
                 }
                 if(instruction instanceof LoadInstruction) {
                     String name = instruction.value1.getName();
                     if(ArraySet.contains(name)) continue;
+                    if(instruction.value1 instanceof GlobalVariable) continue;
                     if (refCount.containsKey(name)) {
                         refCount.put(name, refCount.get(name) + weight);
                     } else {
@@ -51,6 +56,7 @@ public class RefCounter {
                 if(instruction instanceof StoreInstruction){
                     String name = instruction.value2.getName();
                     if(ArraySet.contains(name)) continue;
+                    if(instruction.value2 instanceof GlobalVariable) continue;
                     if (refCount.containsKey(name)) {
                         refCount.put(name, refCount.get(name) + weight);
                     } else {
